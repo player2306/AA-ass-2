@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 
 
@@ -23,3 +24,21 @@ def remove_vertical_seam(image: np.ndarray, seam: np.ndarray) -> np.ndarray:
         out[i] = np.delete(image[i], j, axis=0)
 
     return out
+
+
+def draw_seam(image: np.ndarray, seam: np.ndarray, color=(0, 0, 255)) -> np.ndarray:
+    """Return a copy of image with a single vertical seam drawn."""
+    vis = image.copy()
+    for i, j in enumerate(np.asarray(seam)):
+        j = int(j)
+        if 0 <= i < vis.shape[0] and 0 <= j < vis.shape[1]:
+            vis[i, j] = color
+    return vis
+
+
+def draw_seams(image: np.ndarray, seams: list[np.ndarray], color=(0, 0, 255)) -> np.ndarray:
+    """Return a copy of image with multiple vertical seams drawn."""
+    vis = image.copy()
+    for seam in seams:
+        vis = draw_seam(vis, seam, color=color)
+    return vis
