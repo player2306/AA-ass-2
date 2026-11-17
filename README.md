@@ -67,13 +67,39 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+### GUI crashes with `TclError: Can't find a usable init.tcl`
+
+```
+_tkinter.TclError: Can't find a usable init.tcl in the following directories: ...
+This probably means that Tcl wasn't installed properly.
+```
+
+Tcl is installed fine. This is a known bug in **Python 3.13.0**, where tkinter
+looks in the wrong folders for its Tcl files when run from a venv. Check which
+version your venv uses:
+
+```powershell
+.\.venv\Scripts\python.exe --version
+```
+
+If it says `3.13.0`, either upgrade to Python 3.13.1 or later, or rebuild the
+venv on another installed version (3.11, 3.12 or 3.14 all work):
+
+```powershell
+Remove-Item -Recurse -Force .venv
+py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
 ### Verifying the environment
 
 ```powershell
 .\.venv\Scripts\python.exe -c "import cv2, numpy; print(cv2.__version__, numpy.__version__)"
+.\.venv\Scripts\python.exe -c "import tkinter; tkinter.Tk().destroy(); print('tkinter OK')"
 ```
 
-If that import succeeds, the environment is set up correctly.
+If both commands succeed, the environment is set up correctly and the GUI will
+start.
 
 ## Run
 
