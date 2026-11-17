@@ -20,6 +20,11 @@ If `.venv` already exists, only run the install command when dependencies change
 Run from the project root:
 
 ```powershell
+# Simple GUI (recommended for interactive size editing + visualization)
+.\.venv\Scripts\python.exe main.py --gui
+# or
+.\.venv\Scripts\python.exe gui.py
+
 # Preview the image without running an algorithm
 .\.venv\Scripts\python.exe main.py --preview
 
@@ -27,6 +32,12 @@ Run from the project root:
 .\.venv\Scripts\python.exe main.py -a dp -n 1
 .\.venv\Scripts\python.exe main.py Broadway_tower_edit.jpg -a greedy -n 50
 .\.venv\Scripts\python.exe main.py -a graphcut -n 100 -o output\graphcut.jpg --no-show
+
+# Step-by-step visualization and all-seams overlay
+.\.venv\Scripts\python.exe main.py -a dp -n 20 --visualize --show-all-seams -o output\dp.jpg
+
+# Keyboard interactive mode (OpenCV window)
+.\.venv\Scripts\python.exe main.py -a dp -i --step-size 5 -o output\interactive.jpg
 ```
 
 CLI options:
@@ -39,8 +50,15 @@ CLI options:
 | `-o`, `--output` | Output path (default: `output/result.jpg`) |
 | `--preview` | Load and display only, no algorithm |
 | `--no-show` | Skip the preview window |
+| `--visualize` | Step-by-step seam removal preview (OpenCV window) |
+| `--step-delay` | Delay (ms) between visualization steps (`0` waits for key) |
+| `--show-all-seams` | Overlay all removed seams on the original/base image |
+| `--all-seams-output` | Save path for the all-seams overlay image |
+| `-i`, `--interactive` | Keyboard interactive resizing mode (OpenCV window) |
+| `--step-size` | Seams per interactive step |
+| `--gui` | Launch simple Tkinter GUI |
 
-Algorithms currently print `not implemented` until their module is filled in.
+`dp` is implemented; other algorithms currently print `not implemented`.
 
 ## Structure
 
