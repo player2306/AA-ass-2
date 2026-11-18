@@ -58,7 +58,24 @@ CLI options:
 | `--step-size` | Seams per interactive step |
 | `--gui` | Launch simple Tkinter GUI |
 
-`dp` is implemented; other algorithms currently print `not implemented`.
+`dp` and `graphcut` are implemented; `greedy` currently prints `not implemented`.
+
+`graphcut` solves a max-flow problem in plain Python for every seam, so it is far slower
+than `dp`: about 1 s per seam on a 143x97 image and about 9 s on 286x194, while on the
+full-size image a few seams take over 10 minutes. Use a small image, or
+`compare_q4.py --scale`, when trying it.
+
+## Question 4: Graph cut (min-cut / max-flow)
+
+Details, proofs and results are in [GRAPHCUT.md](GRAPHCUT.md).
+
+```powershell
+# Tests (brute force, DP and textbook max-flow checks)
+.\.venv\Scripts\python.exe -m tests.test_graphcut
+
+# Graph cut vs DP: seams, visual quality, running time (writes output\q4_*.png)
+.\.venv\Scripts\python.exe compare_q4.py --scale 0.1 -n 5 10 20 --sweep 0.05 0.1 0.15 0.2
+```
 
 ## Structure
 
@@ -71,7 +88,9 @@ src/utils/timing.py         Wall-clock timer for benchmarks
 src/algorithms/base.py      SeamCarver interface + AlgorithmResult
 src/algorithms/dp.py        Member 1 — DP core engine (stub)
 src/algorithms/greedy.py    Member 3 — greedy implementation (stub)
-src/algorithms/graphcut.py  Member 4 — graph cut / max-flow (stub)
+src/algorithms/graphcut.py  Member 4 — graph cut / max-flow (see GRAPHCUT.md)
+compare_q4.py               Question 4 comparison: graph cut vs DP
+tests/test_graphcut.py      Graph cut tests
 output/                     Saved results
 ```
 
