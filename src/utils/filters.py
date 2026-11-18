@@ -1,6 +1,10 @@
 import cv2
 import numpy as np
 
+# Border mode for every Sobel call in the project (shared so the full energy map
+# and DP's incremental energy update always agree).
+SOBEL_BORDER = cv2.BORDER_REPLICATE
+
 
 def sobel_gradients(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Return Sobel gradients as (gx, gy) using two passes."""
@@ -10,8 +14,8 @@ def sobel_gradients(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         gray = image
 
     gray = gray.astype(np.float32)
-    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
-    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3, borderType=SOBEL_BORDER)
+    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3, borderType=SOBEL_BORDER)
     return gx, gy
 
 

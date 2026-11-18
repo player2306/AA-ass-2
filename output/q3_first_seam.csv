@@ -1,0 +1,2 @@
+greedy_energy,greedy_multi_energy,dp_energy,same_rows_pct,mean_col_distance,max_col_distance,energy_ratio_greedy_over_dp
+23806.0,14974.0,11266.0,0.0,1129.3626033057851,1213,2.113083614415054

@@ -32,7 +32,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--seams",
         type=int,
         default=1,
-        help="number of vertical seams to remove (default: %(default)s)",
+        help="number of seams to remove (default: %(default)s)",
+    )
+    parser.add_argument(
+        "-d",
+        "--direction",
+        choices=["vertical", "horizontal", "both"],
+        default="vertical",
+        help="vertical seams make the image narrower, horizontal seams make it shorter, "
+        "both removes n vertical then n horizontal (default: %(default)s)",
     )
     parser.add_argument(
         "-o",
@@ -112,10 +120,11 @@ def run_interactive(image, args) -> int:
     win = "Interactive Seam Carving"
 
     help_lines = (
-        "[A/Left] remove seams  [D/Right] reset  [S] save  [+/-] step  [Q/Esc] quit"
+        "[A/Left] narrower  [W/Up] shorter  [D/Right] reset  [S] save  [+/-] step  [Q/Esc] quit"
     )
     print("Interactive controls:")
-    print("  A or Left Arrow : remove vertical seams")
+    print("  A or Left Arrow : remove vertical seams (narrower)")
+    print("  W or Up Arrow   : remove horizontal seams (shorter)")
     print("  D or Right Arrow: reset to original")
     print("  + / -           : change step size")
     print("  S               : save current image")
@@ -132,14 +141,17 @@ def run_interactive(image, args) -> int:
 
         if key in (27, ord("q"), ord("Q")):
             break
-        if key in (ord("a"), ord("A"), 2424832):  # left
-            if w <= step:
-                print("Cannot remove more seams; at minimum width.")
+        if key in (ord("a"), ord("A"), 2424832, ord("w"), ord("W"), 2490368):  # left / up
+            direction = "horizontal" if key in (ord("w"), ord("W"), 2490368) else "vertical"
+            size = h if direction == "horizontal" else w
+            if size <= step:
+                print(f"Cannot remove more seams; at minimum {'height' if direction == 'horizontal' else 'width'}.")
                 continue
-            n = min(step, w - 1)
+            n = min(step, size - 1)
             result = carver.run(
                 current,
                 num_seams=n,
+                direction=direction,
                 visualize=args.visualize,
                 step_delay=args.step_delay,
                 show_all_seams=args.show_all_seams or bool(args.all_seams_output),
@@ -203,12 +215,16 @@ def main(argv: list[str] | None = None) -> int:
         result = carver.run(
             image,
             num_seams=args.seams,
+            direction=args.direction,
             visualize=args.visualize,
             step_delay=args.step_delay,
             show_all_seams=args.show_all_seams or bool(args.all_seams_output),
         )
     except NotImplementedError as exc:
         print(f"not implemented: {exc}", file=sys.stderr)
+        return 1
+    except ValueError as exc:  # e.g. too many seams for the image size
+        print(f"error: {exc}", file=sys.stderr)
         return 1
 
     out_path = save_image(result.image, args.output)

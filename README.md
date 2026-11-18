@@ -15,6 +15,92 @@ py -3.11 -m venv .venv
 
 If `.venv` already exists, only run the install command when dependencies change.
 
+## Troubleshooting
+
+### `.venv : The term '.venv' is not recognized`
+
+You cannot activate a venv by typing its folder name. Run the activation script
+with the full path:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Or skip activation entirely and call the interpreter directly (what the Run
+commands below do):
+
+```powershell
+.\.venv\Scripts\python.exe main.py --gui
+```
+
+### `Activate.ps1 cannot be loaded because running scripts is disabled`
+
+PowerShell's execution policy blocks the activation script. Allow it for the
+current shell only:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+### `python` opens the Microsoft Store or is not recognized
+
+On Windows, `python` is often an App Execution Alias that launches the Store
+instead of a real interpreter. Use the `py` launcher to check what is available:
+
+```powershell
+py --version
+py -0p        # list installed interpreters and their paths
+```
+
+Create the venv with an explicit version, e.g. `py -3.11 -m venv .venv`.
+
+### `pip install` fails to find a wheel (especially `opencv-python`)
+
+Very new Python releases may not have prebuilt wheels yet. Confirm the venv is
+using the interpreter you expect and, if needed, recreate it on a supported
+version:
+
+```powershell
+.\.venv\Scripts\python.exe --version
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+### GUI crashes with `TclError: Can't find a usable init.tcl`
+
+```
+_tkinter.TclError: Can't find a usable init.tcl in the following directories: ...
+This probably means that Tcl wasn't installed properly.
+```
+
+Tcl is installed fine. This is a known bug in **Python 3.13.0**, where tkinter
+looks in the wrong folders for its Tcl files when run from a venv. Check which
+version your venv uses:
+
+```powershell
+.\.venv\Scripts\python.exe --version
+```
+
+If it says `3.13.0`, either upgrade to Python 3.13.1 or later, or rebuild the
+venv on another installed version (3.11, 3.12 or 3.14 all work):
+
+```powershell
+Remove-Item -Recurse -Force .venv
+py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+### Verifying the environment
+
+```powershell
+.\.venv\Scripts\python.exe -c "import cv2, numpy; print(cv2.__version__, numpy.__version__)"
+.\.venv\Scripts\python.exe -c "import tkinter; tkinter.Tk().destroy(); print('tkinter OK')"
+```
+
+If both commands succeed, the environment is set up correctly and the GUI will
+start.
+
 ## Run
 
 Run from the project root:

@@ -124,8 +124,10 @@ class SeamCarvingGUI:
 
     def remove_seams(self):
         n = max(1, int(self.step_size.get()))
-        if self.current.shape[1] <= n:
-            messagebox.showwarning("Cannot remove", "Not enough width to remove that many seams.")
+        # Remove takes n vertical seams, then n horizontal seams,
+        # so both the width and the height must be larger than n.
+        if min(self.current.shape[:2]) <= n:
+            messagebox.showwarning("Cannot remove", "Not enough width or height to remove that many seams.")
             return
         algo = self.algorithm.get()
         try:
@@ -133,6 +135,7 @@ class SeamCarvingGUI:
             result = carver.run(
                 self.current,
                 num_seams=n,
+                direction="both",
                 visualize=False,
                 show_all_seams=True,
                 step_callback=self._step_callback if self.show_steps.get() else None,
@@ -141,7 +144,8 @@ class SeamCarvingGUI:
             self.last_result = result
             self._render(self.current)
             self._set_status(
-                f"[{algo}] Removed {n} seam(s) -> {self.current.shape[1]}x{self.current.shape[0]} in {result.runtime_s:.3f}s"
+                f"[{algo}] Removed {n} vertical + {n} horizontal seam(s) -> "
+                f"{self.current.shape[1]}x{self.current.shape[0]} in {result.runtime_s:.3f}s"
             )
         except NotImplementedError as e:
             messagebox.showinfo("Not implemented", str(e))
@@ -154,11 +158,13 @@ class SeamCarvingGUI:
         if source is None or source.metadata.get("all_seams_image") is None:
             algo = self.algorithm.get()
             try:
-                n = min(max(1, int(self.step_size.get())), self.current.shape[1] - 1)
+                n = min(max(1, int(self.step_size.get())), min(self.current.shape[:2]) - 1)
                 if n <= 0:
                     return
                 carver = get_algorithm(algo)
-                source = carver.run(self.current.copy(), num_seams=n, visualize=False, show_all_seams=True)
+                source = carver.run(
+                    self.current.copy(), num_seams=n, direction="both", visualize=False, show_all_seams=True
+                )
                 self.last_result = source
             except NotImplementedError as e:
                 messagebox.showinfo("Not implemented", str(e))
