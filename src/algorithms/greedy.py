@@ -10,6 +10,7 @@ from ..display import fit_to_window
 from ..seam_utils import seam_energy
 from ..utils import draw_seam, draw_seams, remove_vertical_seam, sobel_edge_map  # shared with DP
 from ..utils.timing import TimerResult, timer
+from .both_directions import carve_both_directions
 from .base import AlgorithmResult, SeamCarver
 
 
@@ -83,18 +84,32 @@ def find_multistart_greedy_seam(energy: np.ndarray) -> np.ndarray:
     return paths[:, best].copy()
 
 
-def _make_frame(image: np.ndarray, seam: np.ndarray, step: int, total: int) -> np.ndarray:
+def _transpose(image: np.ndarray) -> np.ndarray:
+    """Swap rows and columns: (H, W[, C]) -> (W, H[, C]).
+
+    A horizontal seam of an image is a vertical seam of its transpose, so
+    horizontal carving reuses the vertical code on the transposed image.
+    .copy() gives a normal C-ordered array that OpenCV accepts.
+    """
+    return image.swapaxes(0, 1).copy()
+
+
+def _make_frame(image: np.ndarray, seam: np.ndarray, step: int, total: int,
+                to_view=lambda img: img) -> np.ndarray:
     """Copy of the current image with the seam in red and a progress label.
+    ``to_view`` turns a transposed image back (horizontal seams) before the
+    label is written, so the text is not rotated.
     Only used for the GUI / --visualize; it is not part of the algorithm."""
-    frame = draw_seam(image, seam, color=(0, 0, 255))
-    label = f"Seam {step}/{total}  size: {image.shape[1]}x{image.shape[0]}"
+    frame = to_view(draw_seam(image, seam, color=(0, 0, 255)))
+    label = f"Seam {step}/{total}  size: {frame.shape[1]}x{frame.shape[0]}"
     cv2.putText(frame, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
                 (255, 255, 255), 2, cv2.LINE_AA)
     return frame
 
 
 class GreedySeamCarver(SeamCarver):
-    """Vertical seam removal using a greedy local choice (not guaranteed optimal)."""
+    """Vertical or horizontal seam removal using a greedy local choice
+    (not guaranteed optimal)."""
 
     name = "greedy"
     description = "Greedy seam carving"
@@ -105,7 +120,15 @@ class GreedySeamCarver(SeamCarver):
         num_seams: int = 1,
         **kwargs: Any,
     ) -> AlgorithmResult:
-        """Remove ``num_seams`` vertical seams.
+        """Remove ``num_seams`` seams.
+
+        ``direction="vertical"`` (default) removes columns (narrower image).
+        ``direction="horizontal"`` removes rows (shorter image): the image is
+        transposed, carved with the same vertical code, and transposed back.
+        ``direction="both"`` removes ``num_seams`` vertical seams, then
+        ``num_seams`` horizontal seams (see both_directions.py).
+        For horizontal seams, ``seam[c]`` in the metadata is the row removed
+        from column ``c``.
 
         Each iteration: recompute energy -> find greedy seam -> remove it.
         Energy must be recomputed because removing a seam changes the
@@ -122,8 +145,22 @@ class GreedySeamCarver(SeamCarver):
           multi_start     use find_multistart_greedy_seam instead of the
                           normal single-start greedy (default False)
         """
-        if not 0 <= num_seams < image.shape[1]:
-            raise ValueError(f"num_seams must be in [0, {image.shape[1] - 1}]")
+        direction: str = kwargs.get("direction", "vertical")
+        if direction == "both":
+            # vertical seams first, then horizontal (see both_directions.py)
+            return carve_both_directions(self, image, num_seams, **kwargs)
+        if direction not in ("vertical", "horizontal"):
+            raise ValueError("direction must be 'vertical', 'horizontal' or 'both'")
+        horizontal = direction == "horizontal"
+
+        # Horizontal seams: work on the transposed image; `to_view` turns
+        # anything we show or return back into the normal orientation.
+        work = _transpose(image) if horizontal else image
+        to_view = _transpose if horizontal else (lambda img: img)
+
+        if not 0 <= num_seams < work.shape[1]:
+            size = "height" if horizontal else "width"
+            raise ValueError(f"num_seams must be in [0, {work.shape[1] - 1}] (image {size})")
 
         step_callback: Callable[[dict[str, Any]], None] | None = kwargs.get("step_callback")
         visualize: bool = kwargs.get("visualize", False)
@@ -133,8 +170,8 @@ class GreedySeamCarver(SeamCarver):
         multi_start: bool = kwargs.get("multi_start", False)
         find_seam = find_multistart_greedy_seam if multi_start else find_greedy_seam
 
-        img = image.copy()
-        height, width = image.shape[:2]
+        img = work.copy()
+        height, width = work.shape[:2]
         # col_map[r, c] = column in the ORIGINAL image of the pixel now at (r, c).
         # We remove the same seam from it, so we can draw every seam on the original.
         col_map = np.tile(np.arange(width), (height, 1))
@@ -163,7 +200,7 @@ class GreedySeamCarver(SeamCarver):
                 # Drawing is only done when someone wants to see it, so normal
                 # runs (and the Q3 timings) don't pay for it.
                 if step_callback or visualize:
-                    frame = _make_frame(img, seam, step, num_seams)
+                    frame = _make_frame(img, seam, step, num_seams, to_view)
                     if step_callback:
                         step_callback({
                             "step": step,
@@ -171,7 +208,7 @@ class GreedySeamCarver(SeamCarver):
                             "seam": seam.copy(),
                             "seam_original": seams_original[-1],
                             "frame": frame,
-                            "image": img.copy(),
+                            "image": to_view(img.copy()),
                         })
                     if visualize:
                         cv2.imshow(window_name, fit_to_window(frame))
@@ -182,17 +219,18 @@ class GreedySeamCarver(SeamCarver):
                 removal_s += time.perf_counter() - t3
                 col_map = remove_vertical_seam(col_map, seam)
 
-        all_seams_image = draw_seams(image, seams_original) if show_all_seams else None
+        all_seams_image = to_view(draw_seams(work, seams_original)) if show_all_seams else None
         if visualize and all_seams_image is not None:
             cv2.imshow("All Seams (on original)", fit_to_window(all_seams_image))
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
         return AlgorithmResult(
-            image=img,
+            image=to_view(img),
             algorithm="greedy_multi" if multi_start else self.name,
             runtime_s=elapsed.elapsed_s,
             metadata={
+                "direction": direction,
                 "seams_removed": num_seams,
                 "seam_energies": seam_energies,
                 "seams": seams,

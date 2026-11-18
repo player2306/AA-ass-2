@@ -138,6 +138,68 @@ def test_dp_matches_brute_force():
         assert seam_energy(energy, find_greedy_seam(energy)) >= seam_energy(energy, seam)
 
 
+def test_horizontal_seams():
+    """Horizontal carving = vertical carving of the transposed image, for greedy and DP."""
+    from src.algorithms import ALGORITHMS
+
+    rng = np.random.default_rng(6)
+    image = rng.integers(0, 256, size=(20, 30, 3), dtype=np.uint8)
+    flipped = image.swapaxes(0, 1).copy()  # rows <-> columns
+
+    for name in ("greedy", "dp"):
+        if name not in ALGORITHMS:
+            continue
+        carver = ALGORITHMS[name]()
+        result = carver.run(image, num_seams=4, direction="horizontal", show_all_seams=True)
+        assert result.image.shape == (16, 30, 3)                      # 4 rows fewer
+        assert result.metadata["all_seams_image"].shape == image.shape
+        same_as_vertical = carver.run(flipped, num_seams=4).image.swapaxes(0, 1)
+        assert np.array_equal(result.image, same_as_vertical)
+
+        try:  # can't remove all rows; unknown direction is rejected
+            carver.run(image, num_seams=20, direction="horizontal")
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+        try:
+            carver.run(image, num_seams=1, direction="diagonal")
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+
+
+def test_both_directions():
+    """direction="both" = n vertical seams, then n horizontal seams, for greedy and DP."""
+    from src.algorithms import ALGORITHMS
+
+    rng = np.random.default_rng(7)
+    image = rng.integers(0, 256, size=(20, 30, 3), dtype=np.uint8)
+    n = 3
+    for name in ("greedy", "dp"):
+        if name not in ALGORITHMS:
+            continue
+        carver = ALGORITHMS[name]()
+        result = carver.run(image, num_seams=n, direction="both", show_all_seams=True)
+        assert result.image.shape == (20 - n, 30 - n, 3)
+        assert [d for d, _ in result.metadata["seams"]] == ["vertical"] * n + ["horizontal"] * n
+
+        # same as doing the two batches by hand
+        manual = carver.run(image, num_seams=n, direction="vertical").image
+        manual = carver.run(manual, num_seams=n, direction="horizontal").image
+        assert np.array_equal(result.image, manual)
+
+        # every removed pixel is marked once on the original image
+        marked = np.all(result.metadata["all_seams_image"] == (0, 0, 255), axis=2) & \
+            ~np.all(image == (0, 0, 255), axis=2)
+        assert marked.sum() == 20 * 30 - (20 - n) * (30 - n)
+
+        try:  # n must be smaller than both the width and the height
+            carver.run(image, num_seams=20, direction="both")
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+
+
 def test_seam_similarity():
     from compare_q3 import seam_similarity
     sim = seam_similarity(np.array([1, 2, 3, 3]), np.array([1, 2, 5, 4]))
