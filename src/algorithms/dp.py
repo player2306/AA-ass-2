@@ -7,6 +7,7 @@ import numpy as np
 
 from ..display import fit_to_window
 from ..utils import draw_seam, draw_seams, remove_vertical_seam, sobel_edge_map
+from ..utils.filters import SOBEL_BORDER
 from ..utils.timing import TimerResult, timer
 from .base import AlgorithmResult, SeamCarver
 
@@ -27,8 +28,8 @@ def _update_energy(image: np.ndarray, energy: np.ndarray, seam: np.ndarray) -> n
     pad_hi = min(w, hi + 1)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
     region = gray[:, pad_lo:pad_hi]
-    gx = cv2.Sobel(region, cv2.CV_32F, 1, 0, ksize=3)
-    gy = cv2.Sobel(region, cv2.CV_32F, 0, 1, ksize=3)
+    gx = cv2.Sobel(region, cv2.CV_32F, 1, 0, ksize=3, borderType=SOBEL_BORDER)
+    gy = cv2.Sobel(region, cv2.CV_32F, 0, 1, ksize=3, borderType=SOBEL_BORDER)
     region_energy = np.abs(gx) + np.abs(gy)
     energy[:, lo:hi] = region_energy[:, lo - pad_lo : lo - pad_lo + (hi - lo)]
     return energy

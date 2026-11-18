@@ -1,43 +1,35 @@
-"""Small helpers shared by the seam carving algorithms.
+"""Seam helpers used by the Greedy code and the Q3 comparison.
 
-A vertical seam is stored as a 1-D int array ``seam`` of length H, where
-``seam[r]`` is the column of the pixel removed from row ``r``.
+The energy map, seam removal and seam drawing now come from the team's shared
+code in ``src/utils`` (written by Member 1), so Greedy and DP always use exactly
+the same functions. This file re-exports them so older imports such as
+``from src.seam_utils import compute_energy`` keep working, and adds
+``seam_energy``, which the shared code does not have.
+
+A vertical seam is a 1-D int array ``seam`` of length H, where ``seam[r]`` is
+the column of the pixel removed from row ``r``.
 """
 
-import cv2
 import numpy as np
+
+from .utils import draw_seam, remove_vertical_seam, sobel_edge_map
+
+__all__ = ["compute_energy", "remove_vertical_seam", "draw_seam", "seam_energy"]
 
 
 def compute_energy(image: np.ndarray) -> np.ndarray:
-    """Energy map = |dI/dx| + |dI/dy| of the grayscale image (Sobel filter).
+    """Energy map of the image: the shared Sobel |Gx| + |Gy| (float32, shape (H, W)).
 
     High energy = edges/detail (keep). Low energy = flat areas (safe to remove).
-    Returns a float64 array of shape (H, W).
     """
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float64)
-    # BORDER_REPLICATE: the default (reflect) border makes the gradient 0 on the
-    # image edges, which would pull every seam to the left/right border.
-    border = cv2.BORDER_REPLICATE
-    dx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3, borderType=border)
-    dy = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3, borderType=border)
-    return np.abs(dx) + np.abs(dy)
-
-
-def remove_vertical_seam(image: np.ndarray, seam: np.ndarray) -> np.ndarray:
-    """Return a copy of ``image`` that is one column narrower, without the seam."""
-    height, width = image.shape[:2]
-    keep = np.ones((height, width), dtype=bool)
-    keep[np.arange(height), seam] = False  # mark one pixel per row to drop
-    return image[keep].reshape(height, width - 1, *image.shape[2:])
+    return sobel_edge_map(image)
 
 
 def seam_energy(energy: np.ndarray, seam: np.ndarray) -> float:
-    """Total energy of a seam (sum of energy of its pixels). Lower = better seam."""
-    return float(energy[np.arange(len(seam)), seam].sum())
+    """Total energy of a seam (sum of the energy of its pixels). Lower = better seam.
 
-
-def draw_seam(image: np.ndarray, seam: np.ndarray, color=(0, 0, 255)) -> np.ndarray:
-    """Return a copy of ``image`` with the seam pixels painted (default red in BGR)."""
-    out = image.copy()
-    out[np.arange(len(seam)), seam] = color
-    return out
+    The sum is done in float64 so that long totals stay accurate even though
+    the energy map itself is float32.
+    """
+    rows = np.arange(len(seam))
+    return float(energy[rows, seam].sum(dtype=np.float64))
