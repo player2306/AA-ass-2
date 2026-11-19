@@ -109,14 +109,13 @@ def test_step_callback_receives_every_step(name, extra, image):
     assert steps == [1, 2, 3]
 
 
-@pytest.mark.parametrize("name, extra", [p for p in CARVERS if p.values[0] != "graphcut"])
+@pytest.mark.parametrize("name, extra", CARVERS)
 def test_both_directions_shape(name, extra, image):
     assert run(name, extra, image, 3, direction="both").image.shape == (H - 3, W - 3, 3)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="GAP: graphcut does not support direction='both', but gui.py always calls run(direction='both')",
-)
-def test_graphcut_supports_both_directions(image):
-    assert get_algorithm("graphcut").run(image, num_seams=3, direction="both").image.shape == (H - 3, W - 3, 3)
+@pytest.mark.parametrize("name, extra", CARVERS)
+@pytest.mark.parametrize("direction", ["diagonal", "", "Both"])
+def test_invalid_direction_raises(name, extra, image, direction):
+    with pytest.raises(ValueError, match="direction"):
+        run(name, extra, image, 1, direction=direction)

@@ -29,6 +29,10 @@ def save_image(image: np.ndarray, path: str | Path) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not cv2.imwrite(str(path), image):
+    try:
+        written = cv2.imwrite(str(path), image)
+    except cv2.error as exc:  # e.g. no writer for the file extension
+        raise IOError(f"OpenCV could not write image: {path} ({exc.err})") from exc
+    if not written:
         raise IOError(f"OpenCV could not write image: {path}")
     return path

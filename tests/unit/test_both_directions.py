@@ -7,7 +7,7 @@ from src.algorithms import get_algorithm
 from src.algorithms.both_directions import _delete, _seam_pixels, carve_both_directions
 from tests.conftest import rand_img
 
-BOTH_CARVERS = ["dp", "greedy"]
+BOTH_CARVERS = ["dp", "greedy", "graphcut"]
 
 
 @pytest.fixture
@@ -64,11 +64,31 @@ def test_zero_seams_is_identity(name, green_image):
     np.testing.assert_array_equal(result.image, green_image)
 
 
-def test_seam_energies_only_when_algorithm_reports_them(green_image):
-    greedy = get_algorithm("greedy").run(green_image, num_seams=2, direction="both")
-    assert len(greedy.metadata["seam_energies"]) == 4
-    dp = get_algorithm("dp").run(green_image, num_seams=2, direction="both")
-    assert "seam_energies" not in dp.metadata
+@pytest.mark.parametrize("name, reports", [("greedy", True), ("graphcut", True), ("dp", False)])
+def test_seam_energies_only_when_algorithm_reports_them(green_image, name, reports):
+    result = get_algorithm(name).run(green_image, num_seams=2, direction="both")
+    if reports:
+        assert len(result.metadata["seam_energies"]) == 4
+    else:
+        assert "seam_energies" not in result.metadata
+
+
+def test_graphcut_options_are_forwarded_to_both_batches(green_image):
+    with pytest.raises(ValueError, match="energy"):
+        get_algorithm("graphcut").run(green_image, num_seams=1, direction="both", energy="magic")
+    fwd = get_algorithm("graphcut").run(green_image, num_seams=2, direction="both", energy="forward")
+    assert fwd.image.shape == (7, 9, 3)
+
+
+def test_graphcut_both_matches_dp_both_cost():
+    # both are optimal, so each batch's first seam must cost the same as DP's
+    image = rand_img(9, 11, seed=8)
+    dp = get_algorithm("dp").run(image, num_seams=1, direction="both")
+    gc = get_algorithm("graphcut").run(image, num_seams=1, direction="both")
+    from src.algorithms.graphcut import compute_cost_map, seam_cost
+
+    cost = compute_cost_map(image)
+    assert seam_cost(cost, gc.metadata["seams"][0][1]) == seam_cost(cost, dp.metadata["seams"][0][1])
 
 
 def test_extra_options_are_forwarded_to_the_carver(green_image):

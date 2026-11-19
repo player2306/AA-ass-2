@@ -167,11 +167,27 @@ def test_runtime_is_recorded(img):
     assert result.runtime_s >= 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: DP _update_energy calls cvtColor(BGR2GRAY) and crashes on 2-D grayscale input "
-    "(greedy and graphcut handle it)",
-)
-def test_grayscale_image():
-    result = DPSeamCarver().run(rand_img(8, 9, channels=0), num_seams=2)
-    assert result.image.shape == (8, 7)
+@pytest.mark.parametrize("direction, expected", [("vertical", (8, 6)), ("horizontal", (5, 9))])
+def test_grayscale_image(direction, expected):
+    gray = rand_img(8, 9, channels=0)
+    result = DPSeamCarver().run(gray, num_seams=3, direction=direction)
+    assert result.image.shape == expected
+
+
+def test_grayscale_incremental_energy_matches_full_recompute():
+    image = rand_img(10, 12, seed=3, channels=0)
+    energy = _compute_energy(image)
+    seam = _find_vertical_seam(energy)
+    image = remove_vertical_seam(image, seam)
+    keep = np.ones(energy.shape, bool)
+    keep[np.arange(10), seam] = False
+    energy = _update_energy(image, energy[keep].reshape(10, -1), seam)
+    np.testing.assert_allclose(energy, _compute_energy(image), atol=1e-3)
+
+
+def test_grayscale_result_matches_color_result_on_gray_image():
+    gray = rand_img(8, 9, seed=4, channels=0)
+    color = np.dstack([gray, gray, gray])
+    g = DPSeamCarver().run(gray, num_seams=3).image
+    c = DPSeamCarver().run(color, num_seams=3).image
+    np.testing.assert_array_equal(g, c[:, :, 0])

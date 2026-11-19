@@ -48,18 +48,10 @@ def test_save_creates_nested_dirs_and_png_roundtrips(tmp_path):
     np.testing.assert_array_equal(load_image(out), image)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: save_image promises IOError, but cv2.imwrite raises cv2.error for an unknown extension",
-)
-def test_save_unknown_extension_raises_ioerror(tmp_path):
-    with pytest.raises(IOError):
-        save_image(rand_img(3, 3), tmp_path / "out.notanimage")
-
-
-def test_save_unknown_extension_raises_something(tmp_path):
-    with pytest.raises(Exception):
-        save_image(rand_img(3, 3), tmp_path / "out.notanimage")
+@pytest.mark.parametrize("name", ["out.notanimage", "no_extension"])
+def test_save_unwritable_extension_raises_ioerror(tmp_path, name):
+    with pytest.raises(IOError, match="could not write"):
+        save_image(rand_img(3, 3), tmp_path / name)
 
 
 # ---------------------------------------------------------------- fit_to_window

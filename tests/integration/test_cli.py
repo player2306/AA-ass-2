@@ -45,7 +45,10 @@ def test_carve_writes_resized_output(input_png, out_png, algorithm, direction, e
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("direction, expected", [("vertical", (H, W - 2)), ("horizontal", (H - 2, W))])
+@pytest.mark.parametrize(
+    "direction, expected",
+    [("vertical", (H, W - 2)), ("horizontal", (H - 2, W)), ("both", (H - 2, W - 2))],
+)
 def test_graphcut_through_cli(input_png, out_png, direction, expected):
     assert cli(input_png, "-a", "graphcut", "-n", 2, "-d", direction, "-o", out_png) == 0
     assert shape_of(out_png) == expected
@@ -101,9 +104,16 @@ def test_bad_seam_count_returns_error(input_png, out_png, capsys, args):
     assert not out_png.exists()
 
 
-def test_graphcut_both_reports_error_instead_of_crashing(input_png, out_png, capsys):
-    assert cli(input_png, "-a", "graphcut", "-d", "both", "-n", 1, "-o", out_png) == 1
-    assert "direction" in capsys.readouterr().err
+def test_grayscale_input_png(write_png, out_png):
+    # load_image always returns 3 channels, so a grey PNG must work end to end
+    path = write_png(rand_img(H, W, seed=2, channels=0), "gray.png")
+    assert cli(path, "-n", 2, "-o", out_png) == 0
+    assert shape_of(out_png) == (H, W - 2)
+
+
+def test_unwritable_output_extension_reports_error(input_png, tmp_path, capsys):
+    assert cli(input_png, "-n", 1, "-o", tmp_path / "result.notanimage") == 1
+    assert "could not write" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("args", [["-a", "foo"], ["-d", "diagonal"], ["-n", "abc"]])

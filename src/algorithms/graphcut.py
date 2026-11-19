@@ -37,6 +37,7 @@ from ..display import fit_to_window
 from ..utils import draw_seam, draw_seams, remove_vertical_seam, sobel_edge_map
 from ..utils.timing import TimerResult, timer
 from .base import AlgorithmResult, SeamCarver
+from .both_directions import carve_both_directions
 
 INF = float("inf")
 
@@ -427,7 +428,8 @@ class GraphCutSeamCarver(SeamCarver):
 
         Extra keyword arguments:
 
-        * ``direction``: ``"vertical"`` (default, narrower image) or ``"horizontal"`` (shorter image)
+        * ``direction``: ``"vertical"`` (default, narrower image), ``"horizontal"`` (shorter image)
+          or ``"both"`` (``num_seams`` vertical then ``num_seams`` horizontal, see both_directions.py)
         * ``energy``: ``"backward"`` (default, Sobel, same as DP) or ``"forward"``
         * ``method``: ``"dinic"`` (default) or ``"edmonds_karp"``
         * ``visualize``, ``step_delay``, ``show_all_seams``, ``window_name``,
@@ -436,8 +438,11 @@ class GraphCutSeamCarver(SeamCarver):
         direction: str = kwargs.get("direction", "vertical")
         energy_mode: str = kwargs.get("energy", "backward")
         method: str = kwargs.get("method", "dinic")
+        if direction == "both":
+            # vertical seams first, then horizontal; energy/method are passed on to both batches
+            return carve_both_directions(self, image, num_seams, **kwargs)
         if direction not in DIRECTIONS:
-            raise ValueError(f"direction must be one of {DIRECTIONS}")
+            raise ValueError(f"direction must be one of {DIRECTIONS + ('both',)}")
         if energy_mode not in ENERGY_MODES:
             raise ValueError(f"energy must be one of {ENERGY_MODES}")
         if method not in MAX_FLOW_METHODS:
