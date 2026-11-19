@@ -684,56 +684,99 @@ energy = energy[:, :-<span class="nm">1</span>]</div>
       <div class="grid-2 wide-left">
         <div class="stack">
           <div class="card tint-red">
-            <div class="formula big">#seams ≥ 2<sup>m−1</sup></div>
-            <p class="small" style="margin-top:6px">for an m × n image with n &gt; 1</p>
+            <div class="formula big">S(m, n) ≥ 2<sup>m</sup></div>
+            <p class="small" style="margin-top:6px">S(m, n) = number of vertical seams in an m × n image, n &gt; 1</p>
           </div>
-          <div class="step"><div class="num" style="color:var(--accent)">1</div><div><h3>A seam picks one pixel per row</h3><p>Successive pixels must be vertically or diagonally adjacent: from column <span class="mono">j</span>, the next row is <span class="mono">j−1</span>, <span class="mono">j</span>, or <span class="mono">j+1</span>.</p></div></div>
-          <div class="step"><div class="num" style="color:var(--accent)">2</div><div><h3>At least two choices always exist</h3><p>If <span class="mono">j &lt; n</span>, choose <span class="mono">j</span> or <span class="mono">j+1</span>. If <span class="mono">j = n</span>, choose <span class="mono">j−1</span> or <span class="mono">j</span>. The condition <span class="mono">n &gt; 1</span> is exactly what makes this true at the border.</p></div></div>
-          <div class="step"><div class="num" style="color:var(--accent)">3</div><div><h3>Different choices give different seams</h3><p>Two different move sequences select a different pixel in the first row where they diverge, so they cannot be the same seam.</p></div></div>
-          <div class="step"><div class="num" style="color:var(--accent)">4</div><div><h3>Multiply the branching</h3><p>Each of the <span class="mono">m−1</span> transitions contributes at least 2 options, so there are at least <span class="mono">2<sup>m−1</sup></span> complete seams.</p></div></div>
-          <p class="small" style="color:#ffc2b9">Brute-force enumeration is exponential — DP collapses it to O(mn).</p>
+          <div class="step"><div class="num" style="color:var(--accent)">1</div><div><h3>A seam picks one pixel per row</h3><p>From column <span class="mono">j</span>, the next row's pixel must be in column <span class="mono">j−1</span>, <span class="mono">j</span>, or <span class="mono">j+1</span>.</p></div></div>
+          <div class="step"><div class="num" style="color:var(--accent)">2</div><div><h3>Count only columns 1 and 2</h3><p>Because <span class="mono">n &gt; 1</span>, both columns exist. They are adjacent, so <strong>any</strong> sequence of column-1 / column-2 choices is a valid seam.</p></div></div>
+          <div class="step"><div class="num" style="color:var(--accent)">3</div><div><h3>2 choices in each of m rows</h3><p>That gives exactly <span class="mono">S(m, 2) = 2<sup>m</sup></span> seams. Wider images only add more, so <span class="mono">S(m, n) ≥ 2<sup>m</sup></span>.</p></div></div>
+          <p class="small" style="color:#ffc2b9">2<sup>m</sup> is exponential in m. This proves the claim and rules out brute force; DP (next slide) needs only O(mn).</p>
         </div>
         <div class="card" style="display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.02)">
-          <svg viewBox="0 0 500 430" width="100%" height="100%" style="max-height:440px" aria-label="Branching tree of seam choices">
-            <text x="16" y="30" font-family="Segoe UI, sans-serif" font-size="12" fill="#64768b" letter-spacing="2">ROW 1</text>
-            <text x="16" y="126" font-family="Segoe UI, sans-serif" font-size="12" fill="#64768b" letter-spacing="2">ROW 2</text>
-            <text x="16" y="222" font-family="Segoe UI, sans-serif" font-size="12" fill="#64768b" letter-spacing="2">ROW 3</text>
-            <text x="16" y="318" font-family="Segoe UI, sans-serif" font-size="12" fill="#64768b" letter-spacing="2">ROW 4</text>
-            <g stroke="#2c4055" stroke-width="1.4">
-              <line x1="250" y1="36" x2="190" y2="124"/><line x1="250" y1="36" x2="310" y2="124"/>
-              <line x1="190" y1="132" x2="150" y2="220"/><line x1="190" y1="132" x2="230" y2="220"/>
-              <line x1="310" y1="132" x2="270" y2="220"/><line x1="310" y1="132" x2="350" y2="220"/>
-              <line x1="150" y1="228" x2="110" y2="316"/><line x1="150" y1="228" x2="190" y2="316"/>
-              <line x1="230" y1="228" x2="190" y2="316"/><line x1="230" y1="228" x2="270" y2="316"/>
-              <line x1="270" y1="228" x2="230" y2="316"/><line x1="270" y1="228" x2="310" y2="316"/>
-              <line x1="350" y1="228" x2="310" y2="316"/><line x1="350" y1="228" x2="390" y2="316"/>
-            </g>
-            <g fill="#4ecdc4" stroke="#071016" stroke-width="2">
-              <circle cx="250" cy="36" r="8"/>
-              <circle cx="190" cy="128" r="6"/><circle cx="310" cy="128" r="6"/>
-              <circle cx="150" cy="224" r="5"/><circle cx="230" cy="224" r="5"/><circle cx="270" cy="224" r="5"/><circle cx="350" cy="224" r="5"/>
-              <circle cx="110" cy="320" r="4"/><circle cx="190" cy="320" r="4"/><circle cx="190" cy="320" r="4"/><circle cx="270" cy="320" r="4"/><circle cx="230" cy="320" r="4"/><circle cx="310" cy="320" r="4"/><circle cx="310" cy="320" r="4"/><circle cx="390" cy="320" r="4"/>
-            </g>
-            <g font-family="Consolas, monospace" font-size="12" fill="#93a4b8">
-              <text x="442" y="41" text-anchor="end">≥ 1</text>
-              <text x="442" y="133" text-anchor="end">≥ 2</text>
-              <text x="442" y="229" text-anchor="end">≥ 4</text>
-              <text x="442" y="325" text-anchor="end">≥ 8</text>
-            </g>
-            <g font-family="Segoe UI, sans-serif" font-size="13" fill="#e9eff7">
-              <text x="250" y="380" text-anchor="middle">each row branches at least two ways</text>
-              <text x="250" y="404" text-anchor="middle" fill="#ff9b8e" font-family="Cambria Math, serif" font-size="20">2 · 2 · 2 · … = 2ᵐ⁻¹</text>
-            </g>
-          </svg>
+            <svg viewBox="0 0 480 400" width="100%" height="100%" style="max-height:440px" aria-label="All 8 seams of a 3-row image using columns 1 and 2">
+              <text x="240" y="22" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64768b" letter-spacing="2">m = 3 ROWS · COLUMNS 1–2 ONLY</text>
+              <rect x="52" y="44" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="72" y="44" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="52" y="64" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="72" y="64" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="52" y="84" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="72" y="84" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <polyline points="61,53 61,73 61,93" fill="none" stroke="#ffd0c8" stroke-width="1.6"/>
+              <text x="71" y="122" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#93a4b8">1·1·1</text>
+              <rect x="160" y="44" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="180" y="44" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="160" y="64" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="180" y="64" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="160" y="84" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="180" y="84" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <polyline points="169,53 169,73 189,93" fill="none" stroke="#ffd0c8" stroke-width="1.6"/>
+              <text x="179" y="122" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#93a4b8">1·1·2</text>
+              <rect x="268" y="44" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="288" y="44" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="268" y="64" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="288" y="64" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="268" y="84" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="288" y="84" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <polyline points="277,53 297,73 277,93" fill="none" stroke="#ffd0c8" stroke-width="1.6"/>
+              <text x="287" y="122" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#93a4b8">1·2·1</text>
+              <rect x="376" y="44" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="396" y="44" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="376" y="64" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="396" y="64" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="376" y="84" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="396" y="84" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <polyline points="385,53 405,73 405,93" fill="none" stroke="#ffd0c8" stroke-width="1.6"/>
+              <text x="395" y="122" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#93a4b8">1·2·2</text>
+              <rect x="52" y="156" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="72" y="156" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="52" y="176" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="72" y="176" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="52" y="196" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="72" y="196" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <polyline points="81,165 61,185 61,205" fill="none" stroke="#ffd0c8" stroke-width="1.6"/>
+              <text x="71" y="234" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#93a4b8">2·1·1</text>
+              <rect x="160" y="156" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="180" y="156" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="160" y="176" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="180" y="176" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="160" y="196" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="180" y="196" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <polyline points="189,165 169,185 189,205" fill="none" stroke="#ffd0c8" stroke-width="1.6"/>
+              <text x="179" y="234" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#93a4b8">2·1·2</text>
+              <rect x="268" y="156" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="288" y="156" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="268" y="176" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="288" y="176" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="268" y="196" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="288" y="196" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <polyline points="297,165 297,185 277,205" fill="none" stroke="#ffd0c8" stroke-width="1.6"/>
+              <text x="287" y="234" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#93a4b8">2·2·1</text>
+              <rect x="376" y="156" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="396" y="156" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="376" y="176" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="396" y="176" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <rect x="376" y="196" width="18" height="18" rx="3" fill="#16212e" stroke="#2b3b4f"/>
+              <rect x="396" y="196" width="18" height="18" rx="3" fill="rgba(255,107,90,.85)" stroke="#2b3b4f"/>
+              <polyline points="405,165 405,185 405,205" fill="none" stroke="#ffd0c8" stroke-width="1.6"/>
+              <text x="395" y="234" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#93a4b8">2·2·2</text>
+              <g font-family="Consolas, monospace" font-size="13" fill="#93a4b8">
+                <text x="120" y="300">m = 3  →  8</text>
+                <text x="120" y="322">m = 4  →  16</text>
+                <text x="270" y="300">m = 10 →  1,024</text>
+                <text x="270" y="322">m = 20 →  1,048,576</text>
+              </g>
+              <text x="240" y="372" text-anchor="middle" font-family="Cambria Math, serif" font-size="20" fill="#ff9b8e">2 × 2 × … × 2  (m rows)  =  2ᵐ</text>
+            </svg>
         </div>
       </div>
       <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Exponential seams</span></div>
       <aside class="notes">
-        <strong>Speaker notes</strong>
+        <strong>Speaker notes (~40 s)</strong>
         <ul>
-          <li>Key condition: n &gt; 1. With a single column there is exactly one seam, which is why the problem states n &gt; 1.</li>
-          <li>The argument is constructive: every binary sequence of “stay or move right” decisions yields a valid seam.</li>
-          <li>This is the lower bound; there may be more seams because interior pixels have three choices.</li>
+          <li>Question 2a(i) asks how many seams there are. A seam takes one pixel per row, and each next pixel must be in the same or an adjacent column.</li>
+          <li>Since n is greater than 1, there are at least two columns, so I only count seams that use columns 1 and 2. They're adjacent, so every row can pick either one freely.</li>
+          <li>That's 2 choices in each of m rows, so 2 to the m seams. For m = 3, these are the 8 on the right.</li>
+          <li>Wider images only add seams, so the count is at least 2 to the m: exponential, which is why brute force fails.</li>
         </ul>
       </aside>
     </section>
@@ -745,67 +788,90 @@ energy = energy[:, :-<span class="nm">1</span>]</div>
           <div class="kicker">Question 2a(ii)</div>
           <h2>Relating a seam to subproblems</h2>
         </div>
-        <div class="right"><span class="badge">Optimal substructure</span></div>
+        <div class="right"><span class="badge">Dynamic programming</span></div>
       </div>
       <div class="grid-2 wide-right">
         <div class="stack">
-          <div class="card">
-            <h3>Seam cost is additive</h3>
-            <div class="formula small" style="margin-top:6px">e(S) = <span class="op">Σ</span><sub>i=1..m</sub> <span class="cost">e(i, j<sub>i</sub>)</span></div>
-            <p class="small" style="margin-top:6px">The disruption of a seam is the sum of its pixel energies.</p>
-          </div>
           <div class="card tint-teal">
-            <h3>The subproblem</h3>
-            <p style="color:#c9d9e8;margin-top:5px"><span class="mono teal">M(i,j)</span> = minimum cost of any seam that starts in row 1 and ends at pixel <span class="mono">(i,j)</span>.</p>
+            <h3>Subproblem</h3>
+            <p style="color:#c9d9e8;margin-top:5px"><span class="mono teal">DP[i,j]</span> = minimum total energy of a seam ending at pixel <span class="mono">(i,j)</span>.</p>
             <div class="divider"></div>
-            <div class="formula" style="font-size:20px">M(i,j) = e(i,j) + min<sub>k ∈ {−1,0,1}</sub> M(i−1, j+k)</div>
-            <p class="small" style="margin-top:8px">with <span class="mono teal">M(1,j) = e(1,j)</span> and the answer <span class="mono teal">min<sub>j</sub> M(m,j)</span>.</p>
+            <div class="formula" style="font-size:16px;white-space:nowrap">DP[i,j] = e[i,j] + min(DP[i−1,j−1], DP[i−1,j], DP[i−1,j+1])</div>
+            <p class="small" style="margin-top:8px">Base: <span class="mono teal">DP[1,j] = e[1,j]</span> · out-of-range columns = ∞ · answer: <span class="mono teal">min<sub>j</sub> DP[m,j]</span>, then backtrack.</p>
           </div>
-          <p class="small">The same pixel can be the endpoint of several seams, so subproblems <strong>overlap</strong>. Store each M(i,j) once and reuse it — this is exactly the DP table. Without memoisation, part (i) says the search is exponential.</p>
+          <div class="card">
+            <h3>Why DP works</h3>
+            <div class="pill-line" style="margin-top:6px"><span class="dot"></span><span><strong>Optimal substructure:</strong> if the path into the parent weren't the cheapest, swapping in a cheaper one would give a cheaper seam. Contradiction.</span></div>
+            <div class="pill-line" style="margin-top:6px"><span class="dot"></span><span><strong>Overlapping subproblems:</strong> each DP[i−1,k] is reused by up to 3 cells below, so it is stored once.</span></div>
+          </div>
+          <p class="small">Rows are filled top to bottom: <span class="mono teal">O(mn)</span> time and space, versus ≥ 2<sup>m</sup> seams for brute force.</p>
         </div>
         <div class="card" style="display:flex;align-items:center;justify-content:center">
-          <svg viewBox="0 0 480 400" width="100%" height="100%" style="max-height:400px" aria-label="Three predecessor subproblems overlapping">
-            <defs>
-              <marker id="arw" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
-                <path d="M0,0 L7,3 L0,6 z" fill="#4ecdc4"/>
-              </marker>
-            </defs>
-            <g fill="#16212e" stroke="#2b3b4f">
-              <circle cx="120" cy="90" r="14"/><circle cx="200" cy="90" r="14"/><circle cx="280" cy="90" r="14"/><circle cx="360" cy="90" r="14"/>
-              <circle cx="120" cy="190" r="14"/><circle cx="200" cy="190" r="14"/><circle cx="360" cy="190" r="14"/>
-              <circle cx="120" cy="290" r="14"/><circle cx="200" cy="290" r="14"/><circle cx="280" cy="290" r="14"/><circle cx="360" cy="290" r="14"/>
-            </g>
-            <g fill="#4ecdc4">
-              <circle cx="200" cy="90" r="15"/><circle cx="280" cy="90" r="15"/>
-            </g>
-            <circle cx="360" cy="90" r="16" fill="#ff6b5a" stroke="#ffd0c8" stroke-width="2"/>
-            <text x="360" y="95" text-anchor="middle" font-family="Consolas, monospace" font-size="13" fill="#241014">M</text>
-            <g stroke="#4ecdc4" stroke-width="2" marker-end="url(#arw)" opacity=".9">
-              <line x1="214" y1="100" x2="344" y2="92"/>
-              <line x1="294" y1="92" x2="340" y2="92"/>
-              <line x1="294" y1="106" x2="344" y2="98"/>
-            </g>
-            <g font-family="Consolas, monospace" font-size="11" fill="#93a4b8">
-              <text x="188" y="70" text-anchor="middle">M(i−1,j−1)</text>
-              <text x="280" y="67" text-anchor="middle">M(i−1,j)</text>
-              <text x="396" y="66" text-anchor="middle" fill="#ffc2b9">M(i,j)</text>
-            </g>
-            <text x="360" y="132" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64768b">3 parents</text>
-            <g stroke="#2b3b4f" stroke-width="1.2" stroke-dasharray="4 4">
-              <line x1="200" y1="104" x2="200" y2="176"/>
-              <line x1="280" y1="104" x2="280" y2="176"/>
-            </g>
-            <text x="240" y="372" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#93a4b8">shared substructure → one table, filled once</text>
-          </svg>
+            <svg viewBox="0 0 480 400" width="100%" height="100%" style="max-height:420px" aria-label="Worked 3 by 3 DP example">
+              <defs><marker id="arw10" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#4ecdc4"/></marker></defs>
+              <text x="109" y="46" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#e9eff7">Energy e[i,j]</text>
+              <text x="28" y="88" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#64768b">1</text>
+              <rect x="40" y="60" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="61" y="87" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">4</text>
+              <rect x="86" y="60" width="42" height="42" rx="6" fill="rgba(255,107,90,.22)" stroke="#ff6b5a"/>
+              <text x="107" y="87" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#ffd0c8">2</text>
+              <rect x="132" y="60" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="153" y="87" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">7</text>
+              <text x="28" y="134" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#64768b">2</text>
+              <rect x="40" y="106" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="61" y="133" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">6</text>
+              <rect x="86" y="106" width="42" height="42" rx="6" fill="rgba(255,107,90,.22)" stroke="#ff6b5a"/>
+              <text x="107" y="133" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#ffd0c8">1</text>
+              <rect x="132" y="106" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="153" y="133" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">5</text>
+              <text x="28" y="180" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#64768b">3</text>
+              <rect x="40" y="152" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="61" y="179" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">8</text>
+              <rect x="86" y="152" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="107" y="179" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">3</text>
+              <rect x="132" y="152" width="42" height="42" rx="6" fill="rgba(255,107,90,.22)" stroke="#ff6b5a"/>
+              <text x="153" y="179" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#ffd0c8">2</text>
+              <text x="369" y="46" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#e9eff7">DP[i,j]</text>
+              <text x="288" y="88" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#64768b">1</text>
+              <rect x="300" y="60" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="321" y="87" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">4</text>
+              <rect x="346" y="60" width="42" height="42" rx="6" fill="rgba(255,107,90,.22)" stroke="#ff6b5a"/>
+              <text x="367" y="87" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#ffd0c8">2</text>
+              <rect x="392" y="60" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="413" y="87" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">7</text>
+              <text x="288" y="134" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#64768b">2</text>
+              <rect x="300" y="106" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="321" y="133" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">8</text>
+              <rect x="346" y="106" width="42" height="42" rx="6" fill="rgba(255,107,90,.22)" stroke="#ff6b5a"/>
+              <text x="367" y="133" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#ffd0c8">3</text>
+              <rect x="392" y="106" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="413" y="133" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">7</text>
+              <text x="288" y="180" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#64768b">3</text>
+              <rect x="300" y="152" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="321" y="179" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">11</text>
+              <rect x="346" y="152" width="42" height="42" rx="6" fill="#16212e" stroke="#2b3b4f"/>
+              <text x="367" y="179" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#e9eff7">6</text>
+              <rect x="392" y="152" width="42" height="42" rx="6" fill="rgba(255,107,90,.22)" stroke="#ff6b5a"/>
+              <text x="413" y="179" text-anchor="middle" font-family="Consolas, monospace" font-size="16" fill="#ffd0c8">5</text>
+              <line x1="192" y1="129" x2="282" y2="129" stroke="#4ecdc4" stroke-width="2" marker-end="url(#arw10)"/>
+              <text x="237" y="118" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#4ecdc4">fill row by row</text>
+              <g font-family="Consolas, monospace" font-size="13" fill="#93a4b8">
+                <text x="240" y="250" text-anchor="middle">DP[2,2] = 1 + min(4, 2, 7) = 3</text>
+                <text x="240" y="274" text-anchor="middle">DP[3,3] = 2 + min(3, 7) = 5</text>
+              </g>
+              <text x="240" y="314" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#e9eff7">min of last row = 5 → backtrack: (1,2) → (2,2) → (3,3)</text>
+              <text x="240" y="346" text-anchor="middle" font-family="Cambria Math, serif" font-size="20" fill="#ff9b8e">seam energy = 2 + 1 + 2 = 5</text>
+            </svg>
         </div>
       </div>
       <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Subproblems</span></div>
       <aside class="notes">
-        <strong>Speaker notes</strong>
+        <strong>Speaker notes (~40 s)</strong>
         <ul>
-          <li>This is the answer to “how does it relate to subproblems?”: define the best seam ending at every pixel.</li>
-          <li>Because a pixel has at most three predecessors, filling one cell is constant work; the whole table is O(mn).</li>
-          <li>Optimal substructure: an optimal seam ending at (i,j) must contain an optimal seam ending at its chosen parent.</li>
+          <li>For 2a(ii) we use dynamic programming. DP[i,j] is the cheapest seam ending at pixel (i,j). The first row is just its own energy.</li>
+          <li>Every other cell adds its energy to the cheapest of the three cells above it. Neighbours outside the image count as infinity.</li>
+          <li>This works because of optimal substructure, and each value is reused by up to three cells, so we compute it once.</li>
+          <li>In this example the last row's minimum is 5, and backtracking gives the seam 2, 1, 2. That's O(mn) instead of exponential.</li>
         </ul>
       </aside>
     </section>
@@ -817,67 +883,64 @@ energy = energy[:, :-<span class="nm">1</span>]</div>
           <div class="kicker">Question 2b</div>
           <h2>Divide &amp; conquer for Sobel convolution?</h2>
         </div>
-        <div class="right"><span class="badge amber">No asymptotic win for 3×3</span></div>
+        <div class="right"><span class="badge amber">No asymptotic gain</span></div>
       </div>
       <div class="grid-2 wide-left">
         <div class="stack">
           <div class="card">
-            <h3>Direct convolution</h3>
-            <p class="small" style="margin-top:5px">Each output pixel needs 9 multiply-adds for a 3×3 kernel. For a fixed kernel that is <span class="mono teal">Θ(mn)</span>.</p>
+            <h3>Sobel: fixed 3×3 work per pixel</h3>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap">
+              <span class="small">G<sub>x</sub></span><span class="mono" style="display:inline-grid;grid-template-columns:repeat(3,26px);gap:2px 4px;padding:4px 8px;border-left:1px solid var(--dim);border-right:1px solid var(--dim);font-size:13px;color:var(--text)"><span style="text-align:center">-1</span><span style="text-align:center">0</span><span style="text-align:center">1</span><span style="text-align:center">-2</span><span style="text-align:center">0</span><span style="text-align:center">2</span><span style="text-align:center">-1</span><span style="text-align:center">0</span><span style="text-align:center">1</span></span>
+              <span class="small">G<sub>y</sub></span><span class="mono" style="display:inline-grid;grid-template-columns:repeat(3,26px);gap:2px 4px;padding:4px 8px;border-left:1px solid var(--dim);border-right:1px solid var(--dim);font-size:13px;color:var(--text)"><span style="text-align:center">-1</span><span style="text-align:center">-2</span><span style="text-align:center">-1</span><span style="text-align:center">0</span><span style="text-align:center">0</span><span style="text-align:center">0</span><span style="text-align:center">1</span><span style="text-align:center">2</span><span style="text-align:center">1</span></span>
+              <span class="formula" style="font-size:18px">G = √(G<sub>x</sub>² + G<sub>y</sub>²)</span>
+            </div>
+            <p class="small" style="margin-top:8px">Constant work per pixel → <span class="mono teal">O(mn)</span>. Every output pixel must be written, so no method beats <span class="mono teal">Ω(mn)</span>.</p>
           </div>
           <div class="card">
-            <h3>Divide &amp; conquer</h3>
-            <p class="small" style="margin-top:5px">Split into four quadrants, recurse, and merge. Each quadrant needs a <strong>halo</strong> of k−1 = 2 pixels so border outputs are correct.</p>
-            <div class="formula small" style="margin-top:8px;font-size:19px">T(s) = 4T(s/2) + O(s) <span class="op">⇒</span> Θ(s²) = Θ(mn)</div>
-            <p class="small" style="margin-top:6px">The halo adds duplicate work and the merge adds overhead, so the asymptotic order does not improve.</p>
-          </div>
-          <div class="card tint-amber">
-            <h3>Verdict</h3>
-            <p class="small" style="margin-top:5px">D&amp;C can help with <strong>parallelism and cache locality</strong>, not with the complexity of a fixed 3×3 convolution. For Sobel, exploit separability and vectorised kernels instead.</p>
+            <h3>Divide &amp; conquer into 4 regions, N = mn</h3>
+            <p class="small" style="margin-top:6px">Regions write into <strong>one shared output</strong> (O(1) combine):</p>
+            <div class="formula small" style="font-size:19px">T(N) = 4T(N/4) + O(1) <span class="op">⇒</span> Θ(N)</div>
+            <p class="small" style="margin-top:6px">Each region <strong>copies its own output</strong> back (O(N) per level):</p>
+            <div class="formula small" style="font-size:19px">T(N) = 4T(N/4) + O(N) <span class="op">⇒</span> <span class="cost">Θ(N log N)</span></div>
           </div>
         </div>
         <div class="stack">
-          <div class="card tint-teal">
-            <h3>What actually makes it faster</h3>
-            <div class="pill-line" style="margin-top:8px"><span class="dot"></span><span><strong>Separable Sobel</strong> — two 1-D passes: 6 mults per direction instead of 9.</span></div>
-            <div class="pill-line" style="margin-top:8px"><span class="dot"></span><span><strong>Vectorisation</strong> — NumPy / OpenCV process whole rows, as in this project.</span></div>
-            <div class="pill-line" style="margin-top:8px"><span class="dot"></span><span><strong>FFT convolution</strong> — O(N log N) for large kernels, but overkill for 3×3.</span></div>
+          <div class="card tint-amber">
+            <h3>Verdict</h3>
+            <p class="small" style="margin-top:5px">D&amp;C does <strong>not</strong> reduce the complexity of a fixed-size Sobel filter: at best the same O(mn), at worst O(N log N). Its real benefit is <strong>parallelism</strong>: independent regions can run on separate CPU cores.</p>
+            <div class="pill-line" style="margin-top:8px"><span class="dot amber"></span><span>FFT convolution is also D&amp;C, O(N log N), but only pays off for large kernels, not 3×3.</span></div>
           </div>
           <div class="card" style="display:flex;align-items:center;justify-content:center;padding:14px">
-            <svg viewBox="0 0 430 260" width="100%" height="100%" style="max-height:250px" aria-label="Quadrant split with halo overlap">
+            <svg viewBox="0 0 430 260" width="100%" height="100%" style="max-height:250px" aria-label="Image split into four regions with a one-pixel halo">
               <g fill="#0d141d" stroke="#2b3b4f">
-                <rect x="40" y="20" width="160" height="100" rx="6"/>
-                <rect x="230" y="20" width="160" height="100" rx="6"/>
-                <rect x="40" y="140" width="160" height="100" rx="6"/>
-                <rect x="230" y="140" width="160" height="100" rx="6"/>
+                <rect x="40" y="26" width="160" height="96" rx="6"/>
+                <rect x="230" y="26" width="160" height="96" rx="6"/>
+                <rect x="40" y="140" width="160" height="96" rx="6"/>
+                <rect x="230" y="140" width="160" height="96" rx="6"/>
               </g>
               <g fill="rgba(78,205,196,.16)" stroke="rgba(78,205,196,.4)" stroke-dasharray="4 3">
-                <rect x="188" y="20" width="14" height="100"/>
-                <rect x="230" y="20" width="14" height="100"/>
-                <rect x="188" y="140" width="14" height="100"/>
-                <rect x="230" y="140" width="14" height="100"/>
-                <rect x="40" y="108" width="160" height="14"/>
-                <rect x="230" y="108" width="160" height="14"/>
-                <rect x="40" y="140" width="160" height="14"/>
-                <rect x="230" y="140" width="160" height="14"/>
+                <rect x="192" y="26" width="8" height="96"/><rect x="230" y="26" width="8" height="96"/>
+                <rect x="192" y="140" width="8" height="96"/><rect x="230" y="140" width="8" height="96"/>
+                <rect x="40" y="114" width="160" height="8"/><rect x="230" y="114" width="160" height="8"/>
+                <rect x="40" y="140" width="160" height="8"/><rect x="230" y="140" width="160" height="8"/>
               </g>
-              <g font-family="Segoe UI, sans-serif" font-size="11" fill="#93a4b8">
-                <text x="120" y="75" text-anchor="middle">Q1</text><text x="310" y="75" text-anchor="middle">Q2</text>
-                <text x="120" y="196" text-anchor="middle">Q3</text><text x="310" y="196" text-anchor="middle">Q4</text>
-                <text x="215" y="250" text-anchor="middle" fill="#4ecdc4">halo = k−1</text>
+              <g font-family="Segoe UI, sans-serif" font-size="12" fill="#93a4b8">
+                <text x="120" y="78" text-anchor="middle">Region 1 · core 1</text><text x="310" y="78" text-anchor="middle">Region 2 · core 2</text>
+                <text x="120" y="192" text-anchor="middle">Region 3 · core 3</text><text x="310" y="192" text-anchor="middle">Region 4 · core 4</text>
               </g>
-              <text x="215" y="12" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" fill="#64768b" letter-spacing="1">OVERLAP PREVENTS SEAM ARTEFACTS AT QUADRANT BORDERS</text>
+              <text x="215" y="14" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" fill="#64768b" letter-spacing="1">BORDER PIXELS NEED NEIGHBOURS FROM THE NEXT REGION</text>
+              <text x="215" y="254" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#4ecdc4">1-pixel halo overlap = extra work, not a saving</text>
             </svg>
           </div>
         </div>
       </div>
       <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Divide &amp; conquer</span></div>
       <aside class="notes">
-        <strong>Speaker notes</strong>
+        <strong>Speaker notes (~40 s)</strong>
         <ul>
-          <li>Use the Master Theorem: a = 4, b = 2, so the recursive part grows like s²; the O(s) merge is dominated.</li>
-          <li>For a fixed 3×3 Sobel, direct convolution is already linear in the number of pixels.</li>
-          <li>D&amp;C becomes interesting for very large kernels or for parallel hardware; FFT is the usual asymptotic improvement.</li>
+          <li>2b asks if divide and conquer speeds up the Sobel gradient. Sobel uses two fixed 3×3 kernels, so each pixel is constant work: O(mn). And every pixel must be computed, so nothing beats that.</li>
+          <li>Splitting into four regions that write into one shared array gives T(N) = 4T(N/4) + O(1), still O(N). If each region copies its output back, that's O(N) per level, so N log N, which is worse.</li>
+          <li>Border pixels also need a one-pixel overlap. So D&amp;C doesn't improve the complexity; its real benefit is running regions in parallel on multiple cores.</li>
         </ul>
       </aside>
     </section>
