@@ -27,7 +27,8 @@ def _update_energy(image: np.ndarray, energy: np.ndarray, seam: np.ndarray) -> n
 
     pad_lo = max(0, lo - 1)
     pad_hi = min(w, hi + 1)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    # same grey conversion as sobel_gradients, so 2-D (grayscale) images work too
+    gray = (cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image).astype(np.float32)
     region = gray[:, pad_lo:pad_hi]
     gx = cv2.Sobel(region, cv2.CV_32F, 1, 0, ksize=3, borderType=SOBEL_BORDER)
     gy = cv2.Sobel(region, cv2.CV_32F, 0, 1, ksize=3, borderType=SOBEL_BORDER)

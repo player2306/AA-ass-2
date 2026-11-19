@@ -227,7 +227,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    out_path = save_image(result.image, args.output)
+    try:
+        out_path = save_image(result.image, args.output)
+    except OSError as exc:  # e.g. unsupported output extension
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     new_height, new_width = result.image.shape[:2]
     print(f"Saved {out_path} ({new_width}x{new_height}) in {result.runtime_s:.3f}s")
 

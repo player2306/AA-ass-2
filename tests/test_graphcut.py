@@ -148,8 +148,13 @@ def test_run_vertical_horizontal_and_forward():
     assert len(result.metadata["seams"]) == 3
     assert result.metadata["seam_energies"] == result.metadata["max_flows"]
     assert result.metadata["all_seams_image"].shape == image.shape
-    for seam in result.metadata["seams_original"]:
-        assert_valid_seam(seam, 12, 16)
+    for i, seam in enumerate(result.metadata["seams"]):
+        assert_valid_seam(seam, 12, 16 - i)                # connected in the image it was cut from
+    # In original-image columns a later seam may jump 2+ columns where earlier
+    # seams were removed, so only check bounds and that no pixel is removed twice.
+    removed = np.stack(result.metadata["seams_original"])  # (seams, rows)
+    assert removed.min() >= 0 and removed.max() < 16
+    assert all(len(set(removed[:, r])) == 3 for r in range(12))
 
     result = carver.run(image, num_seams=4, direction="horizontal", method="edmonds_karp")
     assert result.image.shape == (8, 16, 3)
