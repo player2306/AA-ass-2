@@ -163,6 +163,21 @@ Details, proofs and results are in [GRAPHCUT.md](GRAPHCUT.md).
 .\.venv\Scripts\python.exe compare_q4.py --scale 0.1 -n 5 10 20 --sweep 0.05 0.1 0.15 0.2
 ```
 
+## Tests
+
+Install the test dependency once, then run the whole suite (unit + integration,
+including `tests/test_greedy.py` and `tests/test_graphcut.py`) with one command:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Useful variants: `-v` (list every test), `tests/unit` or `tests/integration` (one part),
+`-m "not slow"` (skip the graph cut CLI runs). No OpenCV windows are opened.
+Tests marked `xfail` document known bugs; they turn into failures once the bug is fixed,
+as a reminder to remove the marker.
+
 ## Structure
 
 ```text
