@@ -140,3 +140,47 @@ def test_subprocess_smoke(input_png, out_png):
     assert proc.returncode == 0, proc.stderr
     assert "Saved" in proc.stdout
     assert shape_of(out_png) == (H, W - 2)
+
+
+@pytest.mark.parametrize(
+    "args, expected",
+    [
+        (["--width", 10, "--height", 9], (9, 10)),
+        (["--width", 5], (H, 5)),
+        (["--height", 3], (3, W)),
+        (["--width", W, "--height", H], (H, W)),
+        (["--width", 1, "--height", 1], (1, 1)),
+    ],
+    ids=["both", "width-only", "height-only", "unchanged", "one-pixel"],
+)
+@pytest.mark.parametrize("algorithm", ["dp", "greedy"])
+def test_carve_to_target_size(input_png, out_png, algorithm, args, expected):
+    assert cli(input_png, "-a", algorithm, *args, "-o", out_png) == 0
+    assert shape_of(out_png) == expected
+
+
+def test_target_size_overrides_seam_count(input_png, out_png):
+    assert cli(input_png, "-n", 2, "-d", "both", "--width", 10, "-o", out_png) == 0
+    assert shape_of(out_png) == (H, 10)
+
+
+def test_target_size_with_all_seams_overlay(input_png, out_png):
+    assert cli(input_png, "--width", 12, "--height", 10, "-o", out_png, "--show-all-seams") == 0
+    assert shape_of(out_png.with_name("result_all_seams.png")) == (H, W)
+
+
+@pytest.mark.slow
+def test_graphcut_to_target_size(input_png, out_png):
+    assert cli(input_png, "-a", "graphcut", "--width", 16, "--height", 12, "-o", out_png) == 0
+    assert shape_of(out_png) == (12, 16)
+
+
+@pytest.mark.parametrize(
+    "args",
+    [["--width", W + 1], ["--height", H + 1], ["--width", 0], ["--height", -5]],
+    ids=["wider", "taller", "zero-width", "negative-height"],
+)
+def test_unreachable_target_size_returns_error(input_png, out_png, capsys, args):
+    assert cli(input_png, *args, "-o", out_png) == 1
+    assert "only shrink" in capsys.readouterr().err
+    assert not out_png.exists()

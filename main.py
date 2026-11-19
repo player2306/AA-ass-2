@@ -6,7 +6,7 @@ from pathlib import Path
 
 import cv2
 
-from src.algorithms import ALGORITHMS, get_algorithm
+from src.algorithms import ALGORITHMS, carve_to_size, get_algorithm
 from src.config import DEFAULT_IMAGE, DEFAULT_OUTPUT
 from src.display import fit_to_window, show_image, show_pair
 from src.image_io import load_image, save_image
@@ -41,6 +41,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="vertical",
         help="vertical seams make the image narrower, horizontal seams make it shorter, "
         "both removes n vertical then n horizontal (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--width",
+        type=int,
+        help="carve until the image is this wide (replaces -n/-d; can be combined with --height)",
+    )
+    parser.add_argument(
+        "--height",
+        type=int,
+        help="carve until the image is this tall (replaces -n/-d; can be combined with --width)",
     )
     parser.add_argument(
         "-o",
@@ -211,15 +221,19 @@ def main(argv: list[str] | None = None) -> int:
     carver = get_algorithm(args.algorithm)
     print(f"Running '{carver.name}': {carver.description}")
 
+    options = dict(
+        visualize=args.visualize,
+        step_delay=args.step_delay,
+        show_all_seams=args.show_all_seams or bool(args.all_seams_output),
+    )
     try:
-        result = carver.run(
-            image,
-            num_seams=args.seams,
-            direction=args.direction,
-            visualize=args.visualize,
-            step_delay=args.step_delay,
-            show_all_seams=args.show_all_seams or bool(args.all_seams_output),
-        )
+        if args.width is not None or args.height is not None:
+            target_w = width if args.width is None else args.width
+            target_h = height if args.height is None else args.height
+            print(f"Carving to {target_w}x{target_h}")
+            result = carve_to_size(carver, image, target_w, target_h, **options)
+        else:
+            result = carver.run(image, num_seams=args.seams, direction=args.direction, **options)
     except NotImplementedError as exc:
         print(f"not implemented: {exc}", file=sys.stderr)
         return 1

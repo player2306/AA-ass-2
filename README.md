@@ -119,6 +119,9 @@ Run from the project root:
 .\.venv\Scripts\python.exe main.py Broadway_tower_edit.jpg -a greedy -n 50
 .\.venv\Scripts\python.exe main.py -a graphcut -n 100 -o output\graphcut.jpg --no-show
 
+# Carve until the image is exactly 1200x900 (or give only --width / --height)
+.\.venv\Scripts\python.exe main.py -a dp --width 1200 --height 900
+
 # Step-by-step visualization and all-seams overlay
 .\.venv\Scripts\python.exe main.py -a dp -n 20 --visualize --show-all-seams -o output\dp.jpg
 
@@ -134,6 +137,7 @@ CLI options:
 | `-a`, `--algorithm` | `dp`, `greedy`, or `graphcut` (default: `dp`) |
 | `-n`, `--seams` | Number of seams to remove (default: `1`) |
 | `-d`, `--direction` | `vertical` (narrower), `horizontal` (shorter) or `both` (default: `vertical`) |
+| `--width`, `--height` | Carve until the image is this size (replaces `-n`/`-d`; either one alone keeps the other side). Can only shrink |
 | `-o`, `--output` | Output path (default: `output/result.jpg`) |
 | `--preview` | Load and display only, no algorithm |
 | `--no-show` | Skip the preview window |
@@ -155,6 +159,7 @@ All three algorithms (`dp`, `greedy`, `graphcut`) are implemented.
 | --- | --- |
 | Open… / Save… / Save seams overlay… | `image`, `-o`, `--all-seams-output` |
 | Algorithm, Direction, Seams, **Remove seams** | `-a`, `-d`, `-n` |
+| Target size W × H, **Carve to size** (or Enter in a field) | `--width`, `--height` |
 | Step-by-step + Delay ms | `--visualize`, `--step-delay` |
 | Show all seams | `--show-all-seams` |
 | Multi-start greedy (greedy only) | `multi_start=True` |

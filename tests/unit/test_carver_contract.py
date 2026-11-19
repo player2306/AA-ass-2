@@ -134,3 +134,17 @@ def test_grayscale_with_step_frames_and_overlay(name, extra, direction, expected
     assert result.metadata["all_seams_image"].shape == (H, W, 3)  # overlay drawn in color
     assert len(frames) == (4 if direction == "both" else 2)
     assert all(f.ndim == 3 for f in frames)
+
+
+@pytest.mark.parametrize("name, extra", CARVERS)
+@pytest.mark.parametrize("image_shape, direction", [((1, W), "vertical"), ((H, 1), "horizontal")])
+def test_step_frames_on_single_row_or_column(name, extra, image_shape, direction):
+    # Regression: graph cut's transpose returned a view OpenCV's putText rejected
+    # when the image was 1 pixel tall/wide, so carving to 1 pixel with frames crashed.
+    image = rand_img(*image_shape, seed=12)
+    frames = []
+    result = run(name, extra, image, 3, direction=direction, show_all_seams=True,
+                 step_callback=lambda info: frames.append(info["frame"]))
+    assert len(frames) == 3
+    expected = (1, W - 3, 3) if direction == "vertical" else (H - 3, 1, 3)
+    assert result.image.shape == expected

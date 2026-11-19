@@ -1,6 +1,7 @@
 """Algorithm registry. Members register their implementation here."""
 
 from .base import AlgorithmResult, SeamCarver
+from .both_directions import carve_to_size
 from .dp import DPSeamCarver
 from .graphcut import GraphCutSeamCarver
 from .greedy import GreedySeamCarver

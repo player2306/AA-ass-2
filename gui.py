@@ -6,6 +6,7 @@ Keyboard shortcuts (same as main.py -i):
   A / Left   remove vertical seams (narrower)     Ctrl+Z  undo
   W / Up     remove horizontal seams (shorter)    D / Right  reset to original
   B          remove both directions               S / Ctrl+S save image
+  Enter      (in a Target size field) carve to that width x height
 """
 
 import tkinter as tk
@@ -15,7 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 import cv2
 import numpy as np
 
-from src.algorithms import ALGORITHMS, get_algorithm
+from src.algorithms import ALGORITHMS, carve_to_size, get_algorithm
 from src.algorithms.graphcut import ENERGY_MODES, MAX_FLOW_METHODS
 from src.config import DEFAULT_IMAGE, DEFAULT_OUTPUT
 from src.image_io import load_image, save_image
@@ -31,24 +32,41 @@ SLOW_ALGORITHMS = {
     "graphcut": {"ref_pixels": 143 * 97, "ref_seconds": 1.0, "exponent": 1.58},
 }
 SLOW_WARNING_SECONDS = 5.0  # ask before runs estimated to take longer than this
+TARGET_SLOW_TIP = (
+    "Tip: choose a target closer to the current size, or shrink the image first with "
+    "'Scale %' (then pick a smaller target); dp reaches the same size much faster."
+)
 
 
-def estimate_seconds(algorithm: str, height: int, width: int, num_seams: int, direction: str) -> float:
-    """Rough running time of a seam carving run; 0 for algorithms that are not slow."""
+def split_seams(num_seams: int, direction: str) -> tuple[int, int]:
+    """(vertical, horizontal) seam counts for a direction setting."""
+    return (num_seams if direction in ("vertical", "both") else 0,
+            num_seams if direction in ("horizontal", "both") else 0)
+
+
+def describe_seams(num_vertical: int, num_horizontal: int) -> str:
+    parts = [f"{num_vertical} vertical"] * bool(num_vertical) + [f"{num_horizontal} horizontal"] * bool(num_horizontal)
+    return " + ".join(parts) or "0"
+
+
+def plan_seconds(algorithm: str, height: int, width: int, num_vertical: int, num_horizontal: int) -> float:
+    """Rough running time of removing num_vertical then num_horizontal seams; 0 if not slow."""
     model = SLOW_ALGORITHMS.get(algorithm)
-    if model is None or num_seams <= 0:
+    if model is None:
         return 0.0
 
     def seam_time(h, w):
         return model["ref_seconds"] * (h * w / model["ref_pixels"]) ** model["exponent"]
 
-    total = 0.0
-    if direction in ("vertical", "both"):
-        total += sum(seam_time(height, width - i) for i in range(num_seams))
-        width -= num_seams
-    if direction in ("horizontal", "both"):
-        total += sum(seam_time(height - i, width) for i in range(num_seams))
+    total = sum(seam_time(height, width - i) for i in range(max(0, num_vertical)))
+    width -= max(0, num_vertical)
+    total += sum(seam_time(height - i, width) for i in range(max(0, num_horizontal)))
     return total
+
+
+def estimate_seconds(algorithm: str, height: int, width: int, num_seams: int, direction: str) -> float:
+    """Rough running time of a seam carving run; 0 for algorithms that are not slow."""
+    return plan_seconds(algorithm, height, width, *split_seams(num_seams, direction))
 
 
 def suggest_scale_pct(algorithm: str, height: int, width: int, num_seams: int, direction: str,
@@ -98,6 +116,9 @@ class SeamCarvingGUI:
         self.energy = tk.StringVar(value=ENERGY_MODES[0])  # graph cut only
         self.method = tk.StringVar(value=MAX_FLOW_METHODS[0])  # graph cut only
         self.scale_pct = tk.IntVar(value=100)
+        self.target_w = tk.IntVar(value=image.shape[1])
+        self.target_h = tk.IntVar(value=image.shape[0])
+        self._target_synced_to = image.shape[:2]
         self.compare = tk.BooleanVar(value=False)
         self.status = tk.StringVar(value="")
 
@@ -145,6 +166,23 @@ class SeamCarvingGUI:
         self.remove_btn = ttk.Button(row2, text="Remove seams", command=self.remove_seams)
         self.remove_btn.pack(side=tk.LEFT, padx=(10, 4))
         ttk.Button(row2, text="Show all seams", command=self.show_all_seams).pack(side=tk.LEFT, **pad)
+
+        # Row 2b: carve until a chosen size is reached
+        row_t = ttk.Frame(self.root)
+        row_t.pack(side=tk.TOP, fill=tk.X, padx=8, pady=2)
+        ttk.Label(row_t, text="Target size:").pack(side=tk.LEFT)
+        width_box = ttk.Spinbox(row_t, from_=1, to=100000, width=6, textvariable=self.target_w)
+        width_box.pack(side=tk.LEFT, **pad)
+        ttk.Label(row_t, text="×").pack(side=tk.LEFT)
+        height_box = ttk.Spinbox(row_t, from_=1, to=100000, width=6, textvariable=self.target_h)
+        height_box.pack(side=tk.LEFT, **pad)
+        self.target_btn = ttk.Button(row_t, text="Carve to size", command=self.carve_to_target)
+        self.target_btn.pack(side=tk.LEFT, padx=(10, 4))
+        ttk.Label(row_t, text="(width × height; removes vertical then horizontal seams until it fits)").pack(
+            side=tk.LEFT, padx=(6, 0)
+        )
+        for box in (width_box, height_box):
+            box.bind("<Return>", lambda e: self.carve_to_target())
 
         # Row 3: how to carve (display + algorithm-specific options)
         row3 = ttk.Frame(self.root)
@@ -236,6 +274,11 @@ class SeamCarvingGUI:
 
     def _refresh(self):
         """Show the current image, or original | current side by side."""
+        if self.current.shape[:2] != self._target_synced_to:
+            # the image changed size: the target fields start from the new size
+            self._target_synced_to = self.current.shape[:2]
+            self.target_h.set(self.current.shape[0])
+            self.target_w.set(self.current.shape[1])
         if self.compare.get():
             a, b = self.original, self.current
             h = max(a.shape[0], b.shape[0])
@@ -376,18 +419,60 @@ class SeamCarvingGUI:
         if not self.confirm_slow_run(algo, n, direction):
             self._set_status(f"[{algo}] cancelled")
             return
+        self._execute(
+            algo,
+            lambda carver, kwargs: carver.run(self.current, num_seams=n, **kwargs),
+            describe_seams(*split_seams(n, direction)),
+        )
+
+    def carve_to_target(self):
+        """Remove vertical, then horizontal seams until the image is target_w x target_h."""
+        if self.busy:
+            return
+        tw = self._read_int(self.target_w, "Target width")
+        th = None if tw is None else self._read_int(self.target_h, "Target height")
+        if tw is None or th is None:
+            return
+        h, w = self.current.shape[:2]
+        if not (1 <= tw <= w and 1 <= th <= h):
+            messagebox.showwarning(
+                "Cannot reach that size",
+                f"Seam carving can only make the image smaller.\n"
+                f"Choose a width from 1 to {w} and a height from 1 to {h} "
+                f"(asked for {tw}x{th}).\n\nUse Reset or Undo to get back to a larger image.",
+            )
+            return
+        if (tw, th) == (w, h):
+            self._set_status(f"Already {w}x{h}: change the target width or height first")
+            return
+
+        algo = self.algorithm.get()
+        nv, nh = w - tw, h - th
+        if not self._confirm_slow(algo, nv, nh, TARGET_SLOW_TIP):
+            self._set_status(f"[{algo}] cancelled")
+            return
+        self._execute(
+            algo,
+            lambda carver, kwargs: carve_to_size(carver, self.current, tw, th, **kwargs),
+            describe_seams(nv, nh),
+        )
+
+    def _execute(self, algo: str, run, removed: str):
+        """Run a carve with the current settings, then update the image, undo history and status."""
         kwargs = self.build_run_kwargs()
         self.busy = True
-        self.remove_btn.state(["disabled"])
+        for button in (self.remove_btn, self.target_btn):
+            button.state(["disabled"])
         try:
-            result = get_algorithm(algo).run(self.current, num_seams=n, step_callback=self._step_callback, **kwargs)
+            result = run(get_algorithm(algo), dict(kwargs, step_callback=self._step_callback))
         except Exception as e:
             messagebox.showerror("Error", str(e))
             self._set_status(f"[{algo}] failed: {e}")
             return
         finally:
             self.busy = False
-            self.remove_btn.state(["!disabled"])
+            for button in (self.remove_btn, self.target_btn):
+                button.state(["!disabled"])
 
         self.history.append(self.current)
         del self.history[:-MAX_UNDO]
@@ -395,7 +480,6 @@ class SeamCarvingGUI:
         self.current = result.image
         self.last_result = result
         self._refresh()
-        removed = f"{n} vertical + {n} horizontal" if direction == "both" else f"{n} {direction}"
         options = ", ".join(f"{k}={v}" for k, v in kwargs.items() if k not in ("direction", "visualize", "show_all_seams"))
         self._set_status(
             f"[{algo}{f' {options}' if options else ''}] removed {removed} seam(s): "
@@ -403,28 +487,33 @@ class SeamCarvingGUI:
         )
 
     def confirm_slow_run(self, algo: str, n: int, direction: str) -> bool:
-        """Warn before a run of a slow algorithm that will take a while. True = go ahead."""
-        h, w = self.current.shape[:2]
-        seconds = estimate_seconds(algo, h, w, n, direction)
-        if seconds <= SLOW_WARNING_SECONDS:
-            return True
-        seams = f"{n} vertical + {n} horizontal" if direction == "both" else f"{n} {direction}"
-        lines = [
-            f"{algo} is slow. Removing {seams} seam(s) from a {w}x{h} image",
-            f"will take roughly {format_duration(seconds)}, and the window will be busy until it finishes.",
-            "",
-        ]
+        """Warn before a Remove-seams run of a slow algorithm. True = go ahead."""
         # 'Apply scale' always restarts from the image as opened, so suggest relative to that
         lh, lw = self.loaded.shape[:2]
         pct = suggest_scale_pct(algo, lh, lw, n, direction)
         if pct is not None:
-            lines.append(
+            tip = (
                 f"Tip: set 'Scale %' to {pct} and click 'Apply scale' (restarts from the opened image "
                 f"at {round(lw * pct / 100)}x{round(lh * pct / 100)}) to finish in a few seconds."
             )
         else:
-            lines.append("Tip: shrink the image with 'Scale %' or remove fewer seams; dp gives the same seams much faster.")
-        lines += ["", "Run anyway?"]
+            tip = "Tip: shrink the image with 'Scale %' or remove fewer seams; dp gives the same seams much faster."
+        return self._confirm_slow(algo, *split_seams(n, direction), tip)
+
+    def _confirm_slow(self, algo: str, nv: int, nh: int, tip: str) -> bool:
+        """Ask before a run estimated to take longer than SLOW_WARNING_SECONDS. True = go ahead."""
+        h, w = self.current.shape[:2]
+        seconds = plan_seconds(algo, h, w, nv, nh)
+        if seconds <= SLOW_WARNING_SECONDS:
+            return True
+        lines = [
+            f"{algo} is slow. Removing {describe_seams(nv, nh)} seam(s) from a {w}x{h} image",
+            f"will take roughly {format_duration(seconds)}, and the window will be busy until it finishes.",
+            "",
+            tip,
+            "",
+            "Run anyway?",
+        ]
         return messagebox.askyesno("Slow algorithm", "\n".join(lines), icon=messagebox.WARNING, default=messagebox.NO)
 
     def show_all_seams(self):

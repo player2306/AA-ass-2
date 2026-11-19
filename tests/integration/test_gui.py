@@ -309,3 +309,107 @@ def test_small_graphcut_run_does_not_warn(app, dialogs):
     carve(app, "graphcut", "vertical", 2)  # real estimate on 20x24 is a fraction of a second
     assert dialogs[0] == []
     assert app.current.shape[:2] == (H, W - 2)
+
+
+# ---------------------------------------------------------------- carve to a target size
+
+
+def to_target(app, w, h, algorithm="dp"):
+    app.algorithm.set(algorithm)
+    app._on_algorithm_change()
+    app.target_w.set(w)
+    app.target_h.set(h)
+    app.carve_to_target()
+
+
+def test_target_fields_start_at_image_size(app):
+    assert (app.target_w.get(), app.target_h.get()) == (W, H)
+
+
+@pytest.mark.parametrize("algorithm", ["dp", "greedy", "graphcut"])
+@pytest.mark.parametrize("target", [(18, 15), (W, 10), (10, H), (1, 1)])
+def test_carve_to_target(app, dialogs, algorithm, target):
+    to_target(app, *target, algorithm=algorithm)
+    assert dialogs[0] == []
+    assert app.current.shape[:2] == (target[1], target[0])
+    assert f"-> {target[0]}x{target[1]}" in app.status.get()
+
+
+def test_target_fields_follow_image_after_carving_and_undo(app):
+    carve(app, "dp", "vertical", 4)
+    assert (app.target_w.get(), app.target_h.get()) == (W - 4, H)
+    to_target(app, 15, 12)
+    assert (app.target_w.get(), app.target_h.get()) == (15, 12)
+    app.undo()
+    assert (app.target_w.get(), app.target_h.get()) == (W - 4, H)
+    app.reset_image()
+    assert (app.target_w.get(), app.target_h.get()) == (W, H)
+
+
+def test_typed_target_survives_view_toggle(app):
+    app.target_w.set(9)
+    app.compare.set(True)
+    app._refresh()
+    assert app.target_w.get() == 9
+
+
+def test_carve_to_target_is_one_undo_step(app):
+    to_target(app, 14, 11)
+    assert len(app.history) == 1
+    app.undo()
+    assert app.current.shape[:2] == (H, W)
+
+
+@pytest.mark.parametrize("target", [(W + 1, H), (W, H + 5), (0, 5), (5, 0), (-3, 4)])
+def test_unreachable_target_warns_and_keeps_image(app, dialogs, target):
+    to_target(app, *target)
+    kind, title, msg = dialogs[0][-1]
+    assert kind == "showwarning" and "only make the image smaller" in msg
+    assert app.current.shape[:2] == (H, W)
+
+
+def test_non_numeric_target_warns(app, dialogs):
+    app.target_w.set("wide")
+    app.carve_to_target()
+    assert dialogs[0][-1][0] == "showwarning"
+    assert app.current.shape[:2] == (H, W)
+
+
+def test_unchanged_target_does_nothing(app, dialogs):
+    to_target(app, W, H)
+    assert dialogs[0] == []
+    assert app.history == []
+    assert "Already" in app.status.get()
+
+
+def test_target_overlay_has_original_size(app):
+    to_target(app, 20, 16)
+    assert app.last_result.metadata["all_seams_image"].shape == (H, W, 3)
+
+
+def test_slow_target_run_warns_with_target_tip(app, dialogs, slow_graphcut):
+    to_target(app, 20, 18, algorithm="graphcut")  # the recorded answer defaults to No
+    kind, title, msg = dialogs[0][-1]
+    assert kind == "askyesno" and "4 vertical + 2 horizontal" in msg
+    assert "closer to the current size" in msg
+    assert app.current.shape[:2] == (H, W)
+
+
+def test_slow_target_run_confirmed(app, dialogs, slow_graphcut):
+    dialogs[1]["slow_answer"] = True
+    to_target(app, 21, H, algorithm="graphcut")
+    assert app.current.shape[:2] == (H, 21)
+
+
+def test_plan_seconds_matches_direction_estimate():
+    both = gui.estimate_seconds("graphcut", 100, 120, 5, "both")
+    assert gui.plan_seconds("graphcut", 100, 120, 5, 5) == pytest.approx(both)
+    assert gui.plan_seconds("graphcut", 100, 120, 0, 0) == 0
+    assert gui.plan_seconds("dp", 100, 120, 50, 50) == 0
+
+
+@pytest.mark.parametrize(
+    "nv, nh, text", [(3, 0, "3 vertical"), (0, 2, "2 horizontal"), (3, 2, "3 vertical + 2 horizontal")]
+)
+def test_describe_seams(nv, nh, text):
+    assert gui.describe_seams(nv, nh) == text
