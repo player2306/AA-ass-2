@@ -155,6 +155,7 @@ def test_run_vertical_horizontal_and_forward():
     removed = np.stack(result.metadata["seams_original"])  # (seams, rows)
     assert removed.min() >= 0 and removed.max() < 16
     assert all(len(set(removed[:, r])) == 3 for r in range(12))
+    assert removed.shape == (3, 12)
 
     result = carver.run(image, num_seams=4, direction="horizontal", method="edmonds_karp")
     assert result.image.shape == (8, 16, 3)

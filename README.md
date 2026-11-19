@@ -1,8 +1,7 @@
 # AA ass 2 — Seam Carving
 
-Base OpenCV project for the seam carving assignment. Image loading, preview,
-saving, timing, and the algorithm interface are ready. The algorithms themselves
-are stubs so each member can add their own implementation.
+OpenCV project for the seam carving assignment. It includes dynamic programming,
+greedy and graph-cut implementations, image loading, preview, saving and timing.
 
 ## Setup
 
@@ -117,7 +116,7 @@ Run from the project root:
 # Run an algorithm
 .\.venv\Scripts\python.exe main.py -a dp -n 1
 .\.venv\Scripts\python.exe main.py Broadway_tower_edit.jpg -a greedy -n 50
-.\.venv\Scripts\python.exe main.py -a graphcut -n 100 -o output\graphcut.jpg --no-show
+.\.venv\Scripts\python.exe main.py -a graphcut -n 1 -o output\graphcut.jpg --no-show
 
 # Step-by-step visualization and all-seams overlay
 .\.venv\Scripts\python.exe main.py -a dp -n 20 --visualize --show-all-seams -o output\dp.jpg
@@ -132,7 +131,7 @@ CLI options:
 | --- | --- |
 | `image` | Input image path (default: `Broadway_tower_edit.jpg`) |
 | `-a`, `--algorithm` | `dp`, `greedy`, or `graphcut` (default: `dp`) |
-| `-n`, `--seams` | Number of seams to remove (default: `1`) |
+| `-n`, `--seams` | Number of seams to remove per selected direction (default: `1`) |
 | `-d`, `--direction` | `vertical` (narrower), `horizontal` (shorter) or `both` (default: `vertical`) |
 | `-o`, `--output` | Output path (default: `output/result.jpg`) |
 | `--preview` | Load and display only, no algorithm |
@@ -169,24 +168,29 @@ Before a graph cut run that is estimated to take more than about 5 seconds, the 
 shows a warning with the rough time and a suggested `Scale %`, and asks whether to
 continue (default: No). Estimates come from `SLOW_ALGORITHMS` in `gui.py`.
 
-`graphcut` solves a max-flow problem in plain Python for every seam, so it is far slower
-than `dp`: about 1 s per seam on a 143x97 image and about 9 s on 286x194, while on the
-full-size image a few seams take over 10 minutes. Use a small image, or
-`compare_q4.py --scale`, when trying it.
+Graph cut solves a max-flow problem for every seam and can be much slower than
+DP, especially on large images. Use a small image, or `compare_q4.py --scale`,
+when trying it. Results are generated locally in `output/`.
 
-## Question 4: Graph cut (min-cut / max-flow)
-
-Details, proofs and results are in [GRAPHCUT.md](GRAPHCUT.md).
+## Tests and benchmarks
 
 ```powershell
-# Tests (brute force, DP and textbook max-flow checks)
+# Greedy, DP and graph-cut checks
+.\.venv\Scripts\python.exe -m tests.test_greedy
 .\.venv\Scripts\python.exe -m tests.test_graphcut
+.\.venv\Scripts\python.exe -m tests.test_dp_optimization
 
-# Graph cut vs DP: seams, visual quality, running time (writes output\q4_*.png)
-.\.venv\Scripts\python.exe compare_q4.py --scale 0.1 -n 5 10 20 --sweep 0.05 0.1 0.15 0.2
+# Reproduce the Question 5 comparisons and DP memory measurement
+.\.venv\Scripts\python.exe benchmark_q5.py --repeats 3
+.\.venv\Scripts\python.exe benchmark_q5_optimization.py --repeats 7
+
+# Optional graph-cut and DP comparison on a scaled image
+.\.venv\Scripts\python.exe compare_q4.py --scale 0.05 -n 1 3 5
 ```
 
-## Tests
+The Question 5 benchmarks write CSV files and graphs to `output/q5_benchmark/`.
+
+### Full test suite
 
 Install the test dependency once, then run the whole suite (unit + integration,
 including `tests/test_greedy.py` and `tests/test_graphcut.py`) with one command:
@@ -213,9 +217,12 @@ src/algorithms/base.py      SeamCarver interface + AlgorithmResult
 src/algorithms/dp.py        Member 1 — DP core engine
 src/algorithms/greedy.py    Member 3 — greedy implementation (see GREEDY.md)
 src/algorithms/graphcut.py  Member 4 — graph cut / max-flow (see GRAPHCUT.md)
+compare_q3.py               Greedy vs DP comparison
 compare_q4.py               Question 4 comparison: graph cut vs DP
-tests/test_graphcut.py      Graph cut tests
-output/                     Saved results
+benchmark_q5.py             Runtime comparison for all three algorithms
+benchmark_q5_optimization.py  DP seam-finder optimization benchmark
+tests/                      Greedy, DP and graph-cut tests
+output/                     Generated results
 ```
 
 ## Adding an algorithm
