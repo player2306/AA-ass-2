@@ -158,3 +158,12 @@ def test_timer_records_time_even_when_body_raises():
         with timer(result):
             raise RuntimeError("boom")
     assert result.elapsed_s > 0
+
+
+def test_draw_seam_on_grayscale_returns_bgr_with_colored_seam():
+    gray = np.full((3, 4), 50, dtype=np.uint8)
+    out = draw_seam(gray, np.array([0, 1, 2]), color=(0, 0, 255))
+    assert out.shape == (3, 4, 3)
+    assert tuple(out[1, 1]) == (0, 0, 255)
+    assert tuple(out[0, 3]) == (50, 50, 50)
+    assert gray.ndim == 2  # input untouched

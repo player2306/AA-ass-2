@@ -132,7 +132,8 @@ CLI options:
 | --- | --- |
 | `image` | Input image path (default: `Broadway_tower_edit.jpg`) |
 | `-a`, `--algorithm` | `dp`, `greedy`, or `graphcut` (default: `dp`) |
-| `-n`, `--seams` | Number of vertical seams to remove (default: `1`) |
+| `-n`, `--seams` | Number of seams to remove (default: `1`) |
+| `-d`, `--direction` | `vertical` (narrower), `horizontal` (shorter) or `both` (default: `vertical`) |
 | `-o`, `--output` | Output path (default: `output/result.jpg`) |
 | `--preview` | Load and display only, no algorithm |
 | `--no-show` | Skip the preview window |
@@ -144,7 +145,25 @@ CLI options:
 | `--step-size` | Seams per interactive step |
 | `--gui` | Launch simple Tkinter GUI |
 
-`dp` and `graphcut` are implemented; `greedy` currently prints `not implemented`.
+All three algorithms (`dp`, `greedy`, `graphcut`) are implemented.
+
+### GUI
+
+`main.py --gui` (or `gui.py`) opens one window with every setting:
+
+| Control | Same as |
+| --- | --- |
+| Open… / Save… / Save seams overlay… | `image`, `-o`, `--all-seams-output` |
+| Algorithm, Direction, Seams, **Remove seams** | `-a`, `-d`, `-n` |
+| Step-by-step + Delay ms | `--visualize`, `--step-delay` |
+| Show all seams | `--show-all-seams` |
+| Multi-start greedy (greedy only) | `multi_start=True` |
+| Energy, Max-flow (graph cut only) | `energy=`, `method=` |
+| Scale % + Apply scale | shrink the image first (`compare_q4.py --scale`) |
+| Undo, Reset, Before / after | — |
+
+Keyboard shortcuts (as in `-i` mode): `A`/Left narrower, `W`/Up shorter, `B` both,
+`D`/Right reset, `S` save, `Ctrl+Z` undo.
 
 `graphcut` solves a max-flow problem in plain Python for every seam, so it is far slower
 than `dp`: about 1 s per seam on a 143x97 image and about 9 s on 286x194, while on the
@@ -187,8 +206,8 @@ src/image_io.py             OpenCV load/save helpers
 src/display.py              Preview window helpers
 src/utils/timing.py         Wall-clock timer for benchmarks
 src/algorithms/base.py      SeamCarver interface + AlgorithmResult
-src/algorithms/dp.py        Member 1 — DP core engine (stub)
-src/algorithms/greedy.py    Member 3 — greedy implementation (stub)
+src/algorithms/dp.py        Member 1 — DP core engine
+src/algorithms/greedy.py    Member 3 — greedy implementation (see GREEDY.md)
 src/algorithms/graphcut.py  Member 4 — graph cut / max-flow (see GRAPHCUT.md)
 compare_q4.py               Question 4 comparison: graph cut vs DP
 tests/test_graphcut.py      Graph cut tests

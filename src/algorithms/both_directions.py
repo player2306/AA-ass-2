@@ -28,6 +28,11 @@ _DISPLAY_OPTIONS = {"direction", "step_callback", "visualize", "step_delay",
                     "show_all_seams", "window_name", "keep_steps"}
 
 
+def _to_bgr(image: np.ndarray) -> np.ndarray:
+    """Copy of the image with 3 channels, so a grayscale image can show red seams."""
+    return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if image.ndim == 2 else image.copy()
+
+
 def _seam_pixels(seam: np.ndarray, direction: str) -> tuple[np.ndarray, np.ndarray]:
     """(rows, cols) of the pixels a seam removes.
 
@@ -77,7 +82,7 @@ def carve_both_directions(carver, image: np.ndarray, num_seams: int, **kwargs: A
         def on_step(info: dict[str, Any]) -> None:
             step = offset + info["step"]
             current = info["image"]  # current image, normal orientation
-            frame = current.copy()
+            frame = _to_bgr(current)
             rows, cols = _seam_pixels(info["seam"], direction)
             frame[rows, cols] = RED
             cv2.putText(
@@ -117,7 +122,7 @@ def carve_both_directions(carver, image: np.ndarray, num_seams: int, **kwargs: A
             removed[orig_rows[rows, cols], orig_cols[rows, cols]] = True
             orig_rows = _delete(orig_rows, rows, cols, direction)
             orig_cols = _delete(orig_cols, rows, cols, direction)
-        all_seams_image = image.copy()
+        all_seams_image = _to_bgr(image)
         all_seams_image[removed] = RED
     if visualize and all_seams_image is not None:
         cv2.imshow("All Seams (on original)", fit_to_window(all_seams_image))

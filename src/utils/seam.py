@@ -27,8 +27,11 @@ def remove_vertical_seam(image: np.ndarray, seam: np.ndarray) -> np.ndarray:
 
 
 def draw_seam(image: np.ndarray, seam: np.ndarray, color=(0, 0, 255)) -> np.ndarray:
-    """Return a copy of image with a single vertical seam drawn."""
-    vis = image.copy()
+    """Return a copy of image with a single vertical seam drawn.
+
+    A 2-D (grayscale) image is converted to BGR first so the colored seam is visible.
+    """
+    vis = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if image.ndim == 2 else image.copy()
     for i, j in enumerate(np.asarray(seam)):
         j = int(j)
         if 0 <= i < vis.shape[0] and 0 <= j < vis.shape[1]:

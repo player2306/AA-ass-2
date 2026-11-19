@@ -119,3 +119,18 @@ def test_both_directions_shape(name, extra, image):
 def test_invalid_direction_raises(name, extra, image, direction):
     with pytest.raises(ValueError, match="direction"):
         run(name, extra, image, 1, direction=direction)
+
+
+@pytest.mark.parametrize("name, extra", CARVERS)
+@pytest.mark.parametrize(
+    "direction, expected", [("vertical", (H, W - 2)), ("horizontal", (H - 2, W)), ("both", (H - 2, W - 2))]
+)
+def test_grayscale_with_step_frames_and_overlay(name, extra, direction, expected):
+    gray = rand_img(H, W, seed=9, channels=0)
+    frames = []
+    result = run(name, extra, gray, 2, direction=direction, show_all_seams=True,
+                 step_callback=lambda info: frames.append(info["frame"]))
+    assert result.image.shape == expected  # still single-channel
+    assert result.metadata["all_seams_image"].shape == (H, W, 3)  # overlay drawn in color
+    assert len(frames) == (4 if direction == "both" else 2)
+    assert all(f.ndim == 3 for f in frames)
