@@ -37,26 +37,31 @@ def _update_energy(image: np.ndarray, energy: np.ndarray, seam: np.ndarray) -> n
 
 
 def _find_vertical_seam(energy: np.ndarray) -> np.ndarray:
-    """Find minimum-energy vertical seam using DP and backtracking."""
+    """Find a minimum-energy seam using rolling costs and compact parents.
+
+    Only the preceding row of cumulative costs is needed when filling the next
+    row.  Keep a signed one-byte parent offset per pixel for reconstruction.
+    Ties retain the original left, middle, right preference.
+    """
     h, w = energy.shape
-    dp = energy.copy()
-    backtrack = np.zeros((h, w), dtype=np.int32)
+    previous = energy[0].copy()
+    parent_offset = np.zeros((h, w), dtype=np.int8)
+    columns = np.arange(w)
 
     for i in range(1, h):
-        left = np.roll(dp[i - 1], 1)
+        left = np.roll(previous, 1)
         left[0] = np.inf
-        right = np.roll(dp[i - 1], -1)
+        right = np.roll(previous, -1)
         right[-1] = np.inf
-        middle = dp[i - 1]
-        choices = np.vstack((left, middle, right))
+        choices = np.vstack((left, previous, right))
         idx = np.argmin(choices, axis=0) - 1  # -1,0,1 offset
-        backtrack[i] = np.arange(w) + idx
-        dp[i] += choices[idx + 1, np.arange(w)]
+        parent_offset[i] = idx
+        previous = energy[i] + choices[idx + 1, columns]
 
     seam = np.empty(h, dtype=np.int32)
-    seam[h - 1] = int(np.argmin(dp[h - 1]))
+    seam[h - 1] = int(np.argmin(previous))
     for i in range(h - 2, -1, -1):
-        seam[i] = backtrack[i + 1, seam[i + 1]]
+        seam[i] = seam[i + 1] + parent_offset[i + 1, seam[i + 1]]
     return seam
 
 

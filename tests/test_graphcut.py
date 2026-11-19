@@ -148,8 +148,11 @@ def test_run_vertical_horizontal_and_forward():
     assert len(result.metadata["seams"]) == 3
     assert result.metadata["seam_energies"] == result.metadata["max_flows"]
     assert result.metadata["all_seams_image"].shape == image.shape
-    for seam in result.metadata["seams_original"]:
-        assert_valid_seam(seam, 12, 16)
+    for i, (seam, original) in enumerate(zip(result.metadata["seams"], result.metadata["seams_original"])):
+        # Connectivity applies in the current image. Earlier removals can leave
+        # gaps when those coordinates are mapped back to the original image.
+        assert_valid_seam(seam, 12, 16 - i)
+        assert len(original) == 12 and np.all((0 <= original) & (original < 16))
 
     result = carver.run(image, num_seams=4, direction="horizontal", method="edmonds_karp")
     assert result.image.shape == (8, 16, 3)
