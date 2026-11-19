@@ -18,7 +18,13 @@ def dialogs(monkeypatch):
     shown = []
     for name in ("showinfo", "showwarning", "showerror"):
         monkeypatch.setattr(gui.messagebox, name, lambda title, msg, _n=name: shown.append((_n, title, msg)))
-    paths = {"open": "", "save": ""}
+    paths = {"open": "", "save": "", "slow_answer": False}
+
+    def askyesno(title, msg, **kwargs):
+        shown.append(("askyesno", title, msg))
+        return paths["slow_answer"]
+
+    monkeypatch.setattr(gui.messagebox, "askyesno", askyesno)
     monkeypatch.setattr(gui.filedialog, "askopenfilename", lambda **k: paths["open"])
     monkeypatch.setattr(gui.filedialog, "asksaveasfilename", lambda **k: paths["save"])
     return shown, paths
@@ -216,3 +222,90 @@ def test_grayscale_image_displays(app):
     app.set_image(rand_img(10, 12, channels=0), "gray.png")
     carve(app, "dp", "vertical", 2)
     assert app.current.shape == (10, 10)
+
+
+# ---------------------------------------------------------------- slow-algorithm warning
+
+
+def test_estimate_matches_reference_timings():
+    assert gui.estimate_seconds("graphcut", 97, 143, 1, "vertical") == pytest.approx(1.0)
+    assert gui.estimate_seconds("graphcut", 194, 286, 1, "vertical") == pytest.approx(9.0, rel=0.05)
+
+
+def test_estimate_is_zero_for_fast_algorithms_and_no_seams():
+    assert gui.estimate_seconds("dp", 968, 1428, 500, "both") == 0
+    assert gui.estimate_seconds("greedy", 968, 1428, 500, "both") == 0
+    assert gui.estimate_seconds("graphcut", 968, 1428, 0, "both") == 0
+
+
+def test_estimate_grows_with_seams_and_direction():
+    one = gui.estimate_seconds("graphcut", 100, 120, 5, "vertical")
+    assert gui.estimate_seconds("graphcut", 100, 120, 10, "vertical") > one
+    assert gui.estimate_seconds("graphcut", 100, 120, 5, "both") > one
+    # each removed seam makes the image smaller, so later seams are cheaper
+    assert gui.estimate_seconds("graphcut", 100, 120, 5, "vertical") < 5 * gui.estimate_seconds(
+        "graphcut", 100, 120, 1, "vertical"
+    )
+
+
+def test_suggested_scale_fits_target_and_none_when_impossible():
+    pct = gui.suggest_scale_pct("graphcut", 968, 1428, 5, "both")
+    assert pct is not None and 0 < pct < 100
+    h, w = round(968 * pct / 100), round(1428 * pct / 100)
+    assert gui.estimate_seconds("graphcut", h, w, 5, "both") <= gui.SLOW_WARNING_SECONDS
+    assert gui.suggest_scale_pct("graphcut", 968, 1428, 900, "both") is None  # too many seams to shrink
+
+
+@pytest.mark.parametrize("seconds, text", [(5, "5 seconds"), (600, "10 minutes"), (7200, "2.0 hours")])
+def test_format_duration(seconds, text):
+    assert gui.format_duration(seconds) == text
+
+
+@pytest.fixture
+def slow_graphcut(monkeypatch):
+    """Pretend graph cut takes 100 s per seam on the tiny test image."""
+    monkeypatch.setitem(gui.SLOW_ALGORITHMS, "graphcut", {"ref_pixels": H * W, "ref_seconds": 100.0, "exponent": 1.0})
+
+
+def test_slow_run_warns_and_cancel_keeps_image(app, dialogs, slow_graphcut):
+    shown, paths = dialogs
+    paths["slow_answer"] = False
+    carve(app, "graphcut", "both", 2)
+    kind, title, msg = shown[-1]
+    assert kind == "askyesno" and title == "Slow algorithm"
+    assert "graphcut is slow" in msg and "2 vertical + 2 horizontal" in msg and "minutes" in msg
+    assert app.current.shape[:2] == (H, W)
+    assert app.history == []
+    assert "cancelled" in app.status.get()
+
+
+def test_slow_run_confirmed_carves(app, dialogs, slow_graphcut):
+    dialogs[1]["slow_answer"] = True
+    carve(app, "graphcut", "vertical", 2)
+    assert dialogs[0][-1][0] == "askyesno"
+    assert app.current.shape[:2] == (H, W - 2)
+
+
+def test_slow_warning_suggests_scale_based_on_opened_image(app, dialogs, monkeypatch):
+    big = np.zeros((400, 600, 3), np.uint8)
+    app.set_image(big, "big.png")
+    monkeypatch.setitem(gui.SLOW_ALGORITHMS, "graphcut", {"ref_pixels": 100 * 100, "ref_seconds": 1.0, "exponent": 1.5})
+    app.current = big  # answer defaults to "No", so nothing actually runs
+    carve(app, "graphcut", "vertical", 3)
+    msg = dialogs[0][-1][2]
+    assert "Scale %" in msg and "Apply scale" in msg
+    pct = gui.suggest_scale_pct("graphcut", 400, 600, 3, "vertical")
+    assert f"to {pct} " in msg and f"{round(600 * pct / 100)}x{round(400 * pct / 100)}" in msg
+
+
+@pytest.mark.parametrize("algorithm", ["dp", "greedy"])
+def test_fast_algorithms_never_warn(app, dialogs, slow_graphcut, algorithm):
+    carve(app, algorithm, "both", 3)
+    assert dialogs[0] == []
+    assert app.current.shape[:2] == (H - 3, W - 3)
+
+
+def test_small_graphcut_run_does_not_warn(app, dialogs):
+    carve(app, "graphcut", "vertical", 2)  # real estimate on 20x24 is a fraction of a second
+    assert dialogs[0] == []
+    assert app.current.shape[:2] == (H, W - 2)

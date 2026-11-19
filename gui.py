@@ -24,6 +24,53 @@ DIRECTIONS = ("vertical", "horizontal", "both")
 MAX_VIEW_W, MAX_VIEW_H = 1100, 650
 MAX_UNDO = 20
 
+# Slow algorithms: seconds for ONE seam on an image with `ref_pixels` pixels, and how
+# the time grows with size (t ~ pixels ** exponent). Graph cut is fitted to the README
+# timings (about 1 s on 143x97, 9 s on 286x194). Rough, machine-dependent estimates.
+SLOW_ALGORITHMS = {
+    "graphcut": {"ref_pixels": 143 * 97, "ref_seconds": 1.0, "exponent": 1.58},
+}
+SLOW_WARNING_SECONDS = 5.0  # ask before runs estimated to take longer than this
+
+
+def estimate_seconds(algorithm: str, height: int, width: int, num_seams: int, direction: str) -> float:
+    """Rough running time of a seam carving run; 0 for algorithms that are not slow."""
+    model = SLOW_ALGORITHMS.get(algorithm)
+    if model is None or num_seams <= 0:
+        return 0.0
+
+    def seam_time(h, w):
+        return model["ref_seconds"] * (h * w / model["ref_pixels"]) ** model["exponent"]
+
+    total = 0.0
+    if direction in ("vertical", "both"):
+        total += sum(seam_time(height, width - i) for i in range(num_seams))
+        width -= num_seams
+    if direction in ("horizontal", "both"):
+        total += sum(seam_time(height - i, width) for i in range(num_seams))
+    return total
+
+
+def suggest_scale_pct(algorithm: str, height: int, width: int, num_seams: int, direction: str,
+                      target_seconds: float = SLOW_WARNING_SECONDS) -> int | None:
+    """Largest Scale % (step 5) of a height x width image at which removing the same
+    num_seams fits target_seconds, or None if no scale does."""
+    for pct in range(95, 0, -5):
+        h, w = round(height * pct / 100), round(width * pct / 100)
+        if num_seams >= {"vertical": w, "horizontal": h, "both": min(h, w)}[direction]:
+            break  # image would be too small to remove that many seams
+        if estimate_seconds(algorithm, h, w, num_seams, direction) <= target_seconds:
+            return pct
+    return None
+
+
+def format_duration(seconds: float) -> str:
+    if seconds < 90:
+        return f"{seconds:.0f} seconds"
+    if seconds < 90 * 60:
+        return f"{seconds / 60:.0f} minutes"
+    return f"{seconds / 3600:.1f} hours"
+
 
 class SeamCarvingGUI:
     def __init__(self, root: tk.Tk, image: np.ndarray | None = None, name: str | None = None):
@@ -326,6 +373,9 @@ class SeamCarvingGUI:
             return
 
         algo = self.algorithm.get()
+        if not self.confirm_slow_run(algo, n, direction):
+            self._set_status(f"[{algo}] cancelled")
+            return
         kwargs = self.build_run_kwargs()
         self.busy = True
         self.remove_btn.state(["disabled"])
@@ -351,6 +401,31 @@ class SeamCarvingGUI:
             f"[{algo}{f' {options}' if options else ''}] removed {removed} seam(s): "
             f"{before} -> {self._size(self.current)} in {result.runtime_s:.3f}s"
         )
+
+    def confirm_slow_run(self, algo: str, n: int, direction: str) -> bool:
+        """Warn before a run of a slow algorithm that will take a while. True = go ahead."""
+        h, w = self.current.shape[:2]
+        seconds = estimate_seconds(algo, h, w, n, direction)
+        if seconds <= SLOW_WARNING_SECONDS:
+            return True
+        seams = f"{n} vertical + {n} horizontal" if direction == "both" else f"{n} {direction}"
+        lines = [
+            f"{algo} is slow. Removing {seams} seam(s) from a {w}x{h} image",
+            f"will take roughly {format_duration(seconds)}, and the window will be busy until it finishes.",
+            "",
+        ]
+        # 'Apply scale' always restarts from the image as opened, so suggest relative to that
+        lh, lw = self.loaded.shape[:2]
+        pct = suggest_scale_pct(algo, lh, lw, n, direction)
+        if pct is not None:
+            lines.append(
+                f"Tip: set 'Scale %' to {pct} and click 'Apply scale' (restarts from the opened image "
+                f"at {round(lw * pct / 100)}x{round(lh * pct / 100)}) to finish in a few seconds."
+            )
+        else:
+            lines.append("Tip: shrink the image with 'Scale %' or remove fewer seams; dp gives the same seams much faster.")
+        lines += ["", "Run anyway?"]
+        return messagebox.askyesno("Slow algorithm", "\n".join(lines), icon=messagebox.WARNING, default=messagebox.NO)
 
     def show_all_seams(self):
         overlay = self.last_result.metadata.get("all_seams_image") if self.last_result else None

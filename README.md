@@ -165,6 +165,10 @@ All three algorithms (`dp`, `greedy`, `graphcut`) are implemented.
 Keyboard shortcuts (as in `-i` mode): `A`/Left narrower, `W`/Up shorter, `B` both,
 `D`/Right reset, `S` save, `Ctrl+Z` undo.
 
+Before a graph cut run that is estimated to take more than about 5 seconds, the GUI
+shows a warning with the rough time and a suggested `Scale %`, and asks whether to
+continue (default: No). Estimates come from `SLOW_ALGORITHMS` in `gui.py`.
+
 `graphcut` solves a max-flow problem in plain Python for every seam, so it is far slower
 than `dp`: about 1 s per seam on a 143x97 image and about 9 s on 286x194, while on the
 full-size image a few seams take over 10 minutes. Use a small image, or
