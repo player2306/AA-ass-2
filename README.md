@@ -5,14 +5,56 @@ greedy and graph-cut implementations, image loading, preview, saving and timing.
 
 ## Setup
 
-Requires Python 3.11+.
+Requires Python 3.11 or later (avoid 3.13.0, see
+[Troubleshooting](#gui-crashes-with-tclerror-cant-find-a-usable-inittcl)).
+
+**1. Install Python.** Download it from [python.org](https://www.python.org/downloads/).
+On Windows, keep the default *tcl/tk and IDLE* option ticked, since the GUI
+needs it. On Linux, also install tkinter with your package manager (see
+[Troubleshooting](#gui-fails-with-modulenotfounderror-no-module-named-tkinter-linux)).
+
+**2. Open a terminal in the project folder**, the one that contains `main.py`:
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+cd path\to\AA-ass-2
 ```
 
-If `.venv` already exists, only run the install command when dependencies change.
+**3. Create a virtual environment** in a `.venv` folder:
+
+```powershell
+py -3.11 -m venv .venv            # Windows
+python3 -m venv .venv             # macOS / Linux
+```
+
+**4. Install the dependencies** (NumPy, OpenCV, Matplotlib):
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt        # Windows
+.venv/bin/python -m pip install -r requirements.txt                  # macOS / Linux
+```
+
+To run the tests as well, install `requirements-dev.txt` instead. It includes
+everything above plus pytest.
+
+**5. Check the environment:**
+
+```powershell
+.\.venv\Scripts\python.exe -c "import cv2, numpy, tkinter; print('OK')"   # Windows
+.venv/bin/python -c "import cv2, numpy, tkinter; print('OK')"             # macOS / Linux
+```
+
+**6. Run it:**
+
+```powershell
+.\.venv\Scripts\python.exe main.py --gui      # launch the GUI
+.\.venv\Scripts\python.exe -m pytest          # run the tests (needs step 4's dev install)
+```
+
+On macOS / Linux, replace `.\.venv\Scripts\python.exe` with `.venv/bin/python`.
+See [Run](#run) for all command-line options.
+
+You only need to do steps 1–4 once. If `.venv` already exists, rerun step 4
+only when the requirements files change.
 
 ## Troubleshooting
 
@@ -88,6 +130,17 @@ venv on another installed version (3.11, 3.12 or 3.14 all work):
 Remove-Item -Recurse -Force .venv
 py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+### GUI fails with `ModuleNotFoundError: No module named 'tkinter'` (Linux)
+
+The GUI uses tkinter, which pip cannot install. It comes with the standard
+Windows and macOS Python installers, but on Linux it is a separate system
+package:
+
+```bash
+sudo apt install python3-tk        # Debian / Ubuntu
+sudo dnf install python3-tkinter   # Fedora
 ```
 
 ### Verifying the environment
