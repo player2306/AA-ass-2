@@ -193,18 +193,22 @@ Details, proofs and results are in [GRAPHCUT.md](GRAPHCUT.md).
 
 ## Tests
 
-Install the test dependency once, then run the whole suite (unit + integration,
-including `tests/test_greedy.py` and `tests/test_graphcut.py`) with one command:
+Install the test dependency once, then run the whole suite with one command
+(about 60 tests, a couple of seconds; no OpenCV windows are opened):
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Useful variants: `-v` (list every test), `tests/unit` or `tests/integration` (one part),
-`-m "not slow"` (skip the graph cut CLI runs). No OpenCV windows are opened.
-Tests marked `xfail` document known bugs; they turn into failures once the bug is fixed,
-as a reminder to remove the marker.
+| File | Checks |
+| --- | --- |
+| `tests/test_core.py` | DP finds the optimal seam (brute force) and its fast energy update is exact; every algorithm keeps original pixels in order, rejects bad arguments, handles 1-pixel and grayscale images; carving to a size; image I/O errors |
+| `tests/test_cli.py` | `main.py` end to end: output sizes, error exit codes |
+| `tests/test_gui.py` | GUI actions: remove, carve to size, undo/reset, warnings, saving |
+| `tests/test_greedy.py`, `tests/test_graphcut.py` | The algorithm authors' own correctness tests |
+
+Add `-v` to list every test, or a file path to run one file.
 
 ## Structure
 
@@ -219,7 +223,7 @@ src/algorithms/dp.py        Member 1 — DP core engine
 src/algorithms/greedy.py    Member 3 — greedy implementation (see GREEDY.md)
 src/algorithms/graphcut.py  Member 4 — graph cut / max-flow (see GRAPHCUT.md)
 compare_q4.py               Question 4 comparison: graph cut vs DP
-tests/test_graphcut.py      Graph cut tests
+tests/                      Test suite (see Tests above)
 output/                     Saved results
 ```
 
