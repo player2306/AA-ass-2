@@ -404,7 +404,9 @@ def _transpose_if_horizontal(image: np.ndarray, direction: str) -> np.ndarray:
     if direction == "vertical":
         return image
     axes = (1, 0, 2) if image.ndim == 3 else (1, 0)
-    return np.ascontiguousarray(np.transpose(image, axes))
+    # .copy(), not np.ascontiguousarray: for a 1-row image ascontiguousarray returns a
+    # view with strides OpenCV rejects (e.g. putText on step frames fails)
+    return np.transpose(image, axes).copy()
 
 
 def _show_step(frame: np.ndarray, title: str, delay: int = 1) -> int:

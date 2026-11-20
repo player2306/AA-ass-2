@@ -1,11 +1,12 @@
 """Seam carving in both directions: all vertical seams first, then all horizontal.
 
 Used when an algorithm's ``run()`` is called with ``direction="both"`` (for
-example by the GUI's Remove button). The same algorithm (DP or greedy) finds
-every seam, in two batches:
+example by the GUI's Remove button), and by ``carve_to_size`` to reach an exact
+width x height. The same algorithm (DP, greedy or graph cut) finds every seam,
+in two batches:
 
-    1. remove ``num_seams`` vertical seams    -> image becomes narrower
-    2. remove ``num_seams`` horizontal seams  -> image becomes shorter
+    1. remove the vertical seams    -> image becomes narrower
+    2. remove the horizontal seams  -> image becomes shorter
 
 Each batch is one normal ``run()`` call, so the algorithm works exactly as it
 does for a single direction (DP keeps its incremental energy update), and the
@@ -67,6 +68,39 @@ def carve_both_directions(carver, image: np.ndarray, num_seams: int, **kwargs: A
         raise ValueError("num_seams must be >= 0")
     if num_seams >= width or num_seams >= height:
         raise ValueError("cannot remove more seams than image width or height")
+    return carve_seams(carver, image, num_seams, num_seams, **kwargs)
+
+
+def carve_to_size(carver, image: np.ndarray, width: int, height: int, **kwargs: Any) -> AlgorithmResult:
+    """Carve ``image`` down to exactly ``width`` x ``height`` pixels.
+
+    Removes ``image_width - width`` vertical seams, then ``image_height - height``
+    horizontal seams, with the same options as carve_both_directions. Seam
+    carving only removes pixels, so the target cannot be larger than the image.
+    """
+    h, w = image.shape[:2]
+    if not 1 <= width <= w:
+        raise ValueError(f"target width must be between 1 and {w} (seam carving can only shrink)")
+    if not 1 <= height <= h:
+        raise ValueError(f"target height must be between 1 and {h} (seam carving can only shrink)")
+    result = carve_seams(carver, image, w - width, h - height, **kwargs)
+    result.metadata["target_size"] = (width, height)
+    return result
+
+
+def carve_seams(carver, image: np.ndarray, num_vertical: int, num_horizontal: int,
+                **kwargs: Any) -> AlgorithmResult:
+    """Remove ``num_vertical`` vertical seams, then ``num_horizontal`` horizontal seams.
+
+    The two counts may differ (either may be 0). Options as carve_both_directions.
+    """
+    height, width = image.shape[:2]
+    if num_vertical < 0 or num_horizontal < 0:
+        raise ValueError("number of seams must be >= 0")
+    if num_vertical >= width:
+        raise ValueError("cannot remove more seams than image width")
+    if num_horizontal >= height:
+        raise ValueError("cannot remove more seams than image height")
 
     step_callback: Callable[[dict[str, Any]], None] | None = kwargs.get("step_callback")
     visualize: bool = kwargs.get("visualize", False)
@@ -74,7 +108,7 @@ def carve_both_directions(carver, image: np.ndarray, num_seams: int, **kwargs: A
     show_all_seams: bool = kwargs.get("show_all_seams", visualize)
     window_name: str = kwargs.get("window_name", "Seam Carving - Step by Step")
     options = {k: v for k, v in kwargs.items() if k not in _DISPLAY_OPTIONS}
-    total = 2 * num_seams
+    total = num_vertical + num_horizontal
 
     def relay(direction: str, offset: int):
         """Step callback for one batch: redraws the frame with the overall step
@@ -102,10 +136,10 @@ def carve_both_directions(carver, image: np.ndarray, num_seams: int, **kwargs: A
     show_steps = step_callback is not None or visualize
 
     # Batch 1: vertical seams, batch 2: horizontal seams on the narrower image
-    first = carver.run(image, num_seams=num_seams, direction="vertical",
+    first = carver.run(image, num_seams=num_vertical, direction="vertical",
                        step_callback=relay("vertical", 0) if show_steps else None, **options)
-    second = carver.run(first.image, num_seams=num_seams, direction="horizontal",
-                        step_callback=relay("horizontal", num_seams) if show_steps else None, **options)
+    second = carver.run(first.image, num_seams=num_horizontal, direction="horizontal",
+                        step_callback=relay("horizontal", num_vertical) if show_steps else None, **options)
 
     seams = [("vertical", s) for s in first.metadata["seams"]] + \
             [("horizontal", s) for s in second.metadata["seams"]]

@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from src.algorithms import get_algorithm
-from src.algorithms.both_directions import _delete, _seam_pixels, carve_both_directions
+from src.algorithms import carve_to_size, get_algorithm
+from src.algorithms.both_directions import _delete, _seam_pixels, carve_both_directions, carve_seams
 from tests.conftest import rand_img
 
 BOTH_CARVERS = ["dp", "greedy", "graphcut"]
@@ -116,3 +116,65 @@ def test_delete_vertical_and_horizontal():
     assert v.tolist() == [[1, 2, 3], [4, 6, 7], [8, 9, 10]]
     h = _delete(grid, np.array([0, 1, 2, 2]), np.arange(4), "horizontal")
     assert h.tolist() == [[4, 1, 2, 3], [8, 9, 6, 7]]
+
+
+# ---------------------------------------------------------------- carve to a target size
+
+
+@pytest.mark.parametrize("name", BOTH_CARVERS)
+@pytest.mark.parametrize("target", [(11, 9), (6, 9), (11, 4), (5, 3), (1, 1), (1, 9), (11, 1)])
+def test_carve_to_size_reaches_exact_target(name, green_image, target):
+    tw, th = target
+    result = carve_to_size(get_algorithm(name), green_image, tw, th, show_all_seams=True)
+    assert result.image.shape == (th, tw, 3)
+    assert result.metadata["target_size"] == (tw, th)
+    assert result.metadata["seams_removed"] == (11 - tw) + (9 - th)
+    red = np.all(result.metadata["all_seams_image"] == (0, 0, 255), axis=2)
+    assert red.sum() == 9 * 11 - tw * th  # exactly the removed pixels
+
+
+@pytest.mark.parametrize("target", [(12, 9), (11, 10), (0, 5), (5, 0), (-1, 3), (100, 100)])
+def test_carve_to_size_rejects_unreachable_targets(green_image, target):
+    with pytest.raises(ValueError, match="only shrink"):
+        carve_to_size(get_algorithm("dp"), green_image, *target)
+
+
+def test_carve_to_size_unchanged_target_is_identity(green_image):
+    result = carve_to_size(get_algorithm("dp"), green_image, 11, 9)
+    np.testing.assert_array_equal(result.image, green_image)
+    assert result.metadata["seams"] == []
+
+
+def test_carve_to_size_matches_two_separate_runs(green_image):
+    # 4 vertical then 2 horizontal, done by hand with the single-direction carver
+    dp = get_algorithm("dp")
+    by_hand = dp.run(dp.run(green_image, 4).image, 2, direction="horizontal").image
+    np.testing.assert_array_equal(carve_to_size(dp, green_image, 7, 7).image, by_hand)
+
+
+def test_carve_to_size_callback_counts_both_directions(green_image):
+    calls = []
+    carve_to_size(get_algorithm("greedy"), green_image, 8, 5, step_callback=calls.append)
+    assert [c["step"] for c in calls] == list(range(1, 8))
+    assert [c["direction"] for c in calls] == ["vertical"] * 3 + ["horizontal"] * 4
+    assert all(c["total"] == 7 for c in calls)
+
+
+def test_carve_to_size_forwards_algorithm_options(green_image):
+    with pytest.raises(ValueError, match="energy"):
+        carve_to_size(get_algorithm("graphcut"), green_image, 10, 8, energy="magic")
+    out = carve_to_size(get_algorithm("greedy"), green_image, 8, 8, multi_start=True)
+    assert out.image.shape == (8, 8, 3)
+
+
+@pytest.mark.parametrize("nv, nh", [(-1, 0), (0, -1), (11, 0), (0, 9)])
+def test_carve_seams_validates_each_count(green_image, nv, nh):
+    with pytest.raises(ValueError):
+        carve_seams(get_algorithm("dp"), green_image, nv, nh)
+
+
+def test_carve_seams_grayscale(green_image):
+    gray = green_image[:, :, 1].copy()
+    result = carve_seams(get_algorithm("dp"), gray, 3, 2, show_all_seams=True)
+    assert result.image.shape == (7, 8)
+    assert result.metadata["all_seams_image"].shape == (9, 11, 3)
