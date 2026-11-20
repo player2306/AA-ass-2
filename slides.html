@@ -333,7 +333,7 @@
           <div class="kicker">Roadmap</div>
           <h2>What this deck covers</h2>
         </div>
-        <div class="right"><span class="badge">17 slides</span></div>
+        <div class="right"><span class="badge">23 slides</span></div>
       </div>
       <div class="grid-2" style="grid-template-rows:1fr 1fr;gap:18px">
         <div class="card tint-teal">
@@ -375,7 +375,7 @@
       </div>
       <div class="card" style="margin-top:18px;padding:14px 18px;display:flex;gap:18px;align-items:center">
         <span class="badge">Theory</span>
-        <span class="small" style="color:#b6c7d9">Exponential seam count · DP subproblem relation · divide &amp; conquer for convolution · three-way comparison</span>
+        <span class="small" style="color:#b6c7d9">Exponential seam count · DP subproblem relation · divide &amp; conquer for convolution · three-way comparison · testing</span>
       </div>
       <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Roadmap</span></div>
       <aside class="notes">
@@ -1336,12 +1336,14 @@ src/utils/
   filters.py            Sobel energy
   seam.py               remove / draw seams
   timing.py             wall-clock timer
+tests/                  pytest suite (61 tests)
 output/                 results</div>
           <div class="card">
             <h3>Run</h3>
             <div class="code" style="margin-top:8px;font-size:11.5px">python main.py -a dp -n 200 -o output/result.jpg
 python main.py -a dp -n 20 --visualize
-python main.py --gui</div>
+python main.py --gui
+python -m pytest</div>
           </div>
         </div>
         <div class="stack">
@@ -1373,6 +1375,180 @@ python main.py --gui</div>
       </aside>
     </section>
 
+    <!-- Testing 1: the suite -->
+    <section class="slide">
+      <div class="header">
+        <div>
+          <div class="kicker">Testing</div>
+          <h2>61 tests, one command</h2>
+        </div>
+        <div class="right"><span class="badge">≈ 2 s · pytest</span></div>
+      </div>
+      <div class="grid-2 wide-left">
+        <div class="stack">
+          <table>
+            <thead><tr><th style="width:30%">File</th><th style="width:10%">Tests</th><th>Checks</th></tr></thead>
+            <tbody>
+              <tr><td class="first mono" style="font-size:12px">test_core.py</td><td>18</td><td>DP optimality, the incremental energy update, and one shared contract for all three algorithms; carving to a size; image I/O.</td></tr>
+              <tr><td class="first mono" style="font-size:12px">test_cli.py</td><td>10</td><td><span class="mono">main.py</span> end to end: output sizes and error exit codes.</td></tr>
+              <tr><td class="first mono" style="font-size:12px">test_gui.py</td><td>10</td><td>GUI actions driven from code: remove, carve to size, undo, warnings, save.</td></tr>
+              <tr><td class="first mono" style="font-size:12px">test_greedy.py</td><td>11</td><td>Greedy author’s tests: hand traces, never beats the optimum.</td></tr>
+              <tr><td class="first mono" style="font-size:12px">test_graphcut.py</td><td>12</td><td>Graph cut author’s tests: textbook max-flow, matches brute force and DP.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="stack">
+          <div class="code"><span class="cm"># once</span>
+pip install -r requirements-dev.txt
+<span class="cm"># every time</span>
+python -m pytest
+<span class="nm">61 passed in 1.4s</span></div>
+          <div class="card tint-teal">
+            <h3>Small on purpose</h3>
+            <p>We first wrote 454 tests, then cut them to the 38 that guard what matters. Every bug we fixed was put back on purpose to check that a test still fails.</p>
+          </div>
+          <div class="card">
+            <h3>Headless</h3>
+            <p>A fixture swaps OpenCV’s <span class="mono">imshow</span>/<span class="mono">waitKey</span> for no-ops; GUI dialogs are recorded, not shown.</p>
+          </div>
+        </div>
+      </div>
+      <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Testing</span></div>
+      <aside class="notes">
+        <strong>Speaker notes</strong>
+        <ul>
+          <li>One pip install, then python -m pytest from the project root runs everything in about two seconds.</li>
+          <li>test_greedy and test_graphcut are the algorithm authors’ own checks; the other three files are the shared suite.</li>
+          <li>We deliberately kept the suite small: the first version had 454 tests. To make sure the cut lost nothing, we reintroduced each fixed bug and confirmed a test fails.</li>
+          <li>These run by hand; there is no CI pipeline yet.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <!-- Testing 2: correctness -->
+    <section class="slide">
+      <div class="header">
+        <div>
+          <div class="kicker">Testing · Correctness</div>
+          <h2>Proving the seam is the cheapest</h2>
+        </div>
+        <div class="right"><span class="badge">Brute force as the oracle</span></div>
+      </div>
+      <div class="grid-3" style="align-items:start">
+        <div class="card tint-teal stack" style="gap:10px">
+          <h3>DP vs every possible seam</h3>
+          <p>A 5×4 grid has only <strong>178</strong> connected seams, so the test tries them all. On 25 random grids DP’s seam must cost exactly the minimum.</p>
+          <div class="code" style="font-size:11.5px"><span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">25</span>):
+  e = rng.<span class="fn">integers</span>(<span class="nm">0</span>, <span class="nm">10</span>, (<span class="nm">5</span>, <span class="nm">4</span>))
+  s = <span class="fn">_find_vertical_seam</span>(e)
+  <span class="kw">assert</span> cost(e, s) == \
+         <span class="fn">best_seam_cost</span>(e)</div>
+          <p class="tiny">Graph cut is checked the same way in its author’s tests.</p>
+        </div>
+        <div class="card tint-red stack" style="gap:10px">
+          <h3>Fast path = slow path</h3>
+          <p>After each seam, DP recomputes energy only beside the removed pixels. The test removes 10 seams and compares that map with a full Sobel recompute every time.</p>
+          <p>A second test puts cheap pixels at opposite borders: a seam may only join them by wrapping around the image, which DP must never do.</p>
+        </div>
+        <div class="card tint-violet stack" style="gap:8px">
+          <h3>One contract, all 3 algorithms</h3>
+          <div class="pill-line"><span class="dot violet"></span><span>Output keeps original pixels, in order</span></div>
+          <div class="pill-line"><span class="dot violet"></span><span>Vertical, horizontal and both give the right size</span></div>
+          <div class="pill-line"><span class="dot violet"></span><span>Bad seam counts or direction → <span class="mono">ValueError</span></span></div>
+          <div class="pill-line"><span class="dot violet"></span><span>Carve down to 1 pixel wide or tall</span></div>
+          <div class="pill-line"><span class="dot violet"></span><span>Grayscale input, with step frames</span></div>
+          <div class="pill-line"><span class="dot violet"></span><span>The input image is never modified</span></div>
+        </div>
+      </div>
+      <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Testing · correctness</span></div>
+      <aside class="notes">
+        <strong>Speaker notes</strong>
+        <ul>
+          <li>The hard question is whether the optimal algorithms really are optimal. On tiny grids exhaustive search is cheap and gives the true answer.</li>
+          <li>DP’s speed-up only recomputes energy near the removed seam; if that were off by a column, seams would quietly get worse. Comparing with a full recompute catches it.</li>
+          <li>The contract tests run once per algorithm, so DP, greedy and graph cut must all behave the same at the edges, even though they pick different seams.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <!-- Testing 3: edge cases and end-to-end -->
+    <section class="slide">
+      <div class="header">
+        <div>
+          <div class="kicker">Testing · Edge cases</div>
+          <h2>The inputs most likely to break things</h2>
+        </div>
+        <div class="right"><span class="badge">CLI + GUI end to end</span></div>
+      </div>
+      <div class="grid-2 wide-left" style="align-items:start">
+        <table>
+          <thead><tr><th style="width:26%">Case</th><th style="width:36%">Example</th><th>Expected</th></tr></thead>
+          <tbody>
+            <tr><td class="first">Seam count</td><td>n = 0 · n = width · n = −1</td><td>Unchanged · <span class="mono">ValueError</span> · <span class="mono">ValueError</span></td></tr>
+            <tr><td class="first">Tiny results</td><td>Carve to 1 column, 1 row, 1×1</td><td>Works, with progress frames</td></tr>
+            <tr><td class="first">Grayscale</td><td>2-D array, no colour channels</td><td>Carves; seams drawn in red</td></tr>
+            <tr><td class="first">Target size</td><td>Wider or taller than the image</td><td><span class="tag amber">only shrink</span> error</td></tr>
+            <tr><td class="first">Bad files</td><td>Missing, or text named <span class="mono">.png</span></td><td><span class="mono">FileNotFoundError</span></td></tr>
+            <tr><td class="first">Bad output</td><td><span class="mono">result.notanimage</span></td><td>CLI prints error, exits 1</td></tr>
+          </tbody>
+        </table>
+        <div class="stack">
+          <div class="card tint-teal">
+            <h3>Command line · 10 tests</h3>
+            <p>Runs <span class="mono">main.main([…])</span> on generated PNGs for every algorithm and a target size, checks the saved sizes and the seams overlay, plus one real subprocess run.</p>
+          </div>
+          <div class="card tint-amber">
+            <h3>GUI · 10 tests</h3>
+            <p>Builds the real Tkinter window, hidden, and calls what the buttons call: remove, carve to size, undo, reset, save. The slow graph cut warning is tested for both answers.</p>
+          </div>
+        </div>
+      </div>
+      <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Testing · edge cases</span></div>
+      <aside class="notes">
+        <strong>Speaker notes</strong>
+        <ul>
+          <li>Most bugs live at the limits: removing every column but one, a single-row image, or a grayscale picture with no colour channels.</li>
+          <li>The integration tests check that the pieces are wired together: the CLI writes the right file, and the GUI updates the image, undo history and status.</li>
+          <li>Dialogs would block a test, so they are swapped for functions that record what would have been shown.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <!-- Testing 4: what the tests found -->
+    <section class="slide">
+      <div class="header">
+        <div>
+          <div class="kicker">Testing · Results</div>
+          <h2>What the tests found</h2>
+        </div>
+        <div class="right"><span class="badge red">5 bugs · 1 wrong test</span></div>
+      </div>
+      <table>
+        <thead><tr><th style="width:27%">Problem</th><th style="width:38%">Cause</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td class="first">DP crashed on grayscale</td><td>Converted to grey without checking the channel count.</td><td>Convert only 3-channel images.</td></tr>
+          <tr><td class="first">Graph cut rejected “both”</td><td>Never routed to the shared both-directions code, yet the GUI always asks for it.</td><td>Use <span class="mono">carve_both_directions</span> like DP and greedy.</td></tr>
+          <tr><td class="first">Seam drawing crashed on grayscale</td><td>A red BGR colour written into a 1-channel pixel.</td><td>Draw on a colour copy.</td></tr>
+          <tr><td class="first">Graph cut crashed at 1 pixel tall</td><td><span class="mono">np.ascontiguousarray</span> returned a view whose strides OpenCV rejects.</td><td>Transpose with <span class="mono">.copy()</span>.</td></tr>
+          <tr><td class="first">Wrong error from <span class="mono">save_image</span></td><td>OpenCV’s own error escaped for an unknown file extension.</td><td>Raise <span class="mono">IOError</span>; CLI exits 1.</td></tr>
+          <tr><td class="first">A test was wrong, not the code</td><td>Expected seams to stay connected in original columns.</td><td>Check each seam in the image it was cut from.</td></tr>
+        </tbody>
+      </table>
+      <div class="card tint-teal" style="margin-top:14px;padding:13px 18px;display:flex;align-items:center;gap:16px">
+        <span class="badge">Regression check</span>
+        <span class="small" style="color:#c9d9e8">Each fixed bug was reintroduced on purpose: in every case at least one test fails, so none of them can come back unnoticed.</span>
+      </div>
+      <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Testing · results</span></div>
+      <aside class="notes">
+        <strong>Speaker notes</strong>
+        <ul>
+          <li>Writing edge-case tests found five real bugs. Two were user-facing: choosing graph cut in the GUI always failed, because the Remove button carves in both directions.</li>
+          <li>The 1-pixel crash was found later by the carve-to-size tests: carving to 1×1 ends with a 1-pixel-wide image.</li>
+          <li>The last row is the opposite case: the graph cut code was right and the assertion was wrong, because a seam connected in the shrunken image can skip columns of the original.</li>
+        </ul>
+      </aside>
+    </section>
+
     <!-- 17 -->
     <section class="slide">
       <div class="header">
@@ -1389,6 +1565,7 @@ python main.py --gui</div>
           <div class="pill-line"><span class="dot amber"></span><span><strong>Greedy is fast but local.</strong> It can be close on smooth images and arbitrarily bad on adversarial ones.</span></div>
           <div class="pill-line"><span class="dot violet"></span><span><strong>Graph cut is the same optimum, heavier.</strong> Useful when the energy model needs flexible capacities.</span></div>
           <div class="pill-line"><span class="dot"></span><span><strong>One engine, two axes.</strong> Transpose the image to carve horizontal seams with the same recurrence.</span></div>
+          <div class="pill-line"><span class="dot red"></span><span><strong>Tested against brute force.</strong> 61 tests check optimality and the edge cases; they found five bugs.</span></div>
         </div>
         <div class="card tint-teal" style="display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:330px;text-align:center;padding:30px">
           <div class="formula big" style="font-size:38px">M(i,j) = e(i,j) + min M(i−1, j+k)</div>
