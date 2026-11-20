@@ -1404,10 +1404,6 @@ pip install -r requirements-dev.txt
 python -m pytest
 <span class="nm">61 passed in 1.4s</span></div>
           <div class="card tint-teal">
-            <h3>Small on purpose</h3>
-            <p>We first wrote 454 tests, then cut them to the 38 that guard what matters. Every bug we fixed was put back on purpose to check that a test still fails.</p>
-          </div>
-          <div class="card">
             <h3>Headless</h3>
             <p>A fixture swaps OpenCV’s <span class="mono">imshow</span>/<span class="mono">waitKey</span> for no-ops; GUI dialogs are recorded, not shown.</p>
           </div>
@@ -1419,7 +1415,6 @@ python -m pytest
         <ul>
           <li>One pip install, then python -m pytest from the project root runs everything in about two seconds.</li>
           <li>test_greedy and test_graphcut are the algorithm authors’ own checks; the other three files are the shared suite.</li>
-          <li>We deliberately kept the suite small: the first version had 454 tests. To make sure the cut lost nothing, we reintroduced each fixed bug and confirmed a test fails.</li>
           <li>These run by hand; there is no CI pipeline yet.</li>
         </ul>
       </aside>
