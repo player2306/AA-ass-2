@@ -214,6 +214,10 @@ Install the test dependency once, then run the whole suite with one command
 
 Add `-v` to list every test, or a file path to run one file.
 
+GitHub Actions runs the same suite on every push to `main` and on every pull
+request (`.github/workflows/tests.yml`): Ubuntu with Python 3.11 and 3.13, and
+Windows with Python 3.12. On Linux the GUI tests run under Xvfb.
+
 ## Structure
 
 ```text
