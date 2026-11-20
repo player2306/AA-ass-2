@@ -333,7 +333,7 @@
           <div class="kicker">Roadmap</div>
           <h2>What this deck covers</h2>
         </div>
-        <div class="right"><span class="badge">23 slides</span></div>
+        <div class="right"><span class="badge">22 slides</span></div>
       </div>
       <div class="grid-2" style="grid-template-rows:1fr 1fr;gap:18px">
         <div class="card tint-teal">
@@ -1509,41 +1509,6 @@ python -m pytest
       </aside>
     </section>
 
-    <!-- Testing 4: what the tests found -->
-    <section class="slide">
-      <div class="header">
-        <div>
-          <div class="kicker">Testing · Results</div>
-          <h2>What the tests found</h2>
-        </div>
-        <div class="right"><span class="badge red">5 bugs · 1 wrong test</span></div>
-      </div>
-      <table>
-        <thead><tr><th style="width:27%">Problem</th><th style="width:38%">Cause</th><th>Fix</th></tr></thead>
-        <tbody>
-          <tr><td class="first">DP crashed on grayscale</td><td>Converted to grey without checking the channel count.</td><td>Convert only 3-channel images.</td></tr>
-          <tr><td class="first">Graph cut rejected “both”</td><td>Never routed to the shared both-directions code, yet the GUI always asks for it.</td><td>Use <span class="mono">carve_both_directions</span> like DP and greedy.</td></tr>
-          <tr><td class="first">Seam drawing crashed on grayscale</td><td>A red BGR colour written into a 1-channel pixel.</td><td>Draw on a colour copy.</td></tr>
-          <tr><td class="first">Graph cut crashed at 1 pixel tall</td><td><span class="mono">np.ascontiguousarray</span> returned a view whose strides OpenCV rejects.</td><td>Transpose with <span class="mono">.copy()</span>.</td></tr>
-          <tr><td class="first">Wrong error from <span class="mono">save_image</span></td><td>OpenCV’s own error escaped for an unknown file extension.</td><td>Raise <span class="mono">IOError</span>; CLI exits 1.</td></tr>
-          <tr><td class="first">A test was wrong, not the code</td><td>Expected seams to stay connected in original columns.</td><td>Check each seam in the image it was cut from.</td></tr>
-        </tbody>
-      </table>
-      <div class="card tint-teal" style="margin-top:14px;padding:13px 18px;display:flex;align-items:center;gap:16px">
-        <span class="badge">Regression check</span>
-        <span class="small" style="color:#c9d9e8">Each fixed bug was reintroduced on purpose: in every case at least one test fails, so none of them can come back unnoticed.</span>
-      </div>
-      <div class="slide-foot"><span>Seam carving · Assignment 2</span><span class="right">Testing · results</span></div>
-      <aside class="notes">
-        <strong>Speaker notes</strong>
-        <ul>
-          <li>Writing edge-case tests found five real bugs. Two were user-facing: choosing graph cut in the GUI always failed, because the Remove button carves in both directions.</li>
-          <li>The 1-pixel crash was found later by the carve-to-size tests: carving to 1×1 ends with a 1-pixel-wide image.</li>
-          <li>The last row is the opposite case: the graph cut code was right and the assertion was wrong, because a seam connected in the shrunken image can skip columns of the original.</li>
-        </ul>
-      </aside>
-    </section>
-
     <!-- 17 -->
     <section class="slide">
       <div class="header">
@@ -1560,7 +1525,7 @@ python -m pytest
           <div class="pill-line"><span class="dot amber"></span><span><strong>Greedy is fast but local.</strong> It can be close on smooth images and arbitrarily bad on adversarial ones.</span></div>
           <div class="pill-line"><span class="dot violet"></span><span><strong>Graph cut is the same optimum, heavier.</strong> Useful when the energy model needs flexible capacities.</span></div>
           <div class="pill-line"><span class="dot"></span><span><strong>One engine, two axes.</strong> Transpose the image to carve horizontal seams with the same recurrence.</span></div>
-          <div class="pill-line"><span class="dot red"></span><span><strong>Tested against brute force.</strong> 61 tests check optimality and the edge cases; they found five bugs.</span></div>
+          <div class="pill-line"><span class="dot red"></span><span><strong>Tested against brute force.</strong> 61 tests check optimality and the edge cases.</span></div>
         </div>
         <div class="card tint-teal" style="display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:330px;text-align:center;padding:30px">
           <div class="formula big" style="font-size:38px">M(i,j) = e(i,j) + min M(i−1, j+k)</div>
